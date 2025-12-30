@@ -1,0 +1,42 @@
+{
+  "name": "@civgenesis/client",
+  "version": "0.1.0",
+  "description": "CivGenesis client SDK (TypeScript) for WebSocket Binary + TLV protocol.",
+  "license": "Apache-2.0",
+  "author": "cuihairu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cuihairu/civgenesis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cuihairu/civgenesis/issues"
+  },
+  "homepage": "https://github.com/cuihairu/civgenesis#readme",
+  "keywords": [
+    "civgenesis",
+    "game",
+    "netty",
+    "websocket",
+    "tlv",
+    "sdk"
+  ],
+  "type": "module",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

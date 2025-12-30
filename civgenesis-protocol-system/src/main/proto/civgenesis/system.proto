@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package civgenesis.system;
+
+option java_package = "io.github.cuihairu.civgenesis.protocol.system";
+option java_outer_classname = "SystemMessages";
+option java_multiple_files = true;
+
+enum CompressionAlgorithm {
+  COMPRESSION_NONE = 0;
+  COMPRESSION_ZSTD = 1;
+  COMPRESSION_LZ4 = 2;
+  COMPRESSION_GZIP = 3;
+}
+
+enum CipherAlgorithm {
+  CIPHER_NONE = 0;
+  CIPHER_TLS = 1;
+  CIPHER_CHACHA20_POLY1305 = 2;
+  CIPHER_AES_256_GCM = 3;
+}
+
+message ClientHelloReq {
+  uint32 protocol_version = 1;
+  string client_version = 2;
+  uint32 max_frame_bytes = 3;
+  repeated CompressionAlgorithm supported_compressions = 4;
+  repeated CipherAlgorithm supported_ciphers = 5;
+  bool require_encrypt = 6;
+  bool require_ack_push = 7;
+  bytes client_key_share = 8;
+  bytes client_nonce = 9;
+  map<string, string> ext = 10;
+}
+
+message ClientHelloResp {
+  uint32 protocol_version = 1;
+  CompressionAlgorithm selected_compression = 2;
+  CipherAlgorithm selected_cipher = 3;
+  uint32 max_frame_bytes = 4;
+  uint32 max_in_flight_req = 5;
+  uint32 max_buffered_push_count = 6;
+  uint32 max_buffered_push_age_millis = 7;
+  bytes server_key_share = 8;
+  bytes server_nonce = 9;
+  string server_epoch = 10;
+}
+
+message LoginReq {
+  string token = 1;
+  bool kick_existing_session = 2;
+}
+
+message LoginResp {
+  uint64 player_id = 1;
+  uint64 session_epoch = 2;
+  bool need_sync = 3;
+  uint64 server_time_millis = 4;
+}
+
+message ResumeReq {
+  string token = 1;
+  uint64 last_applied_push_id = 2;
+  uint64 client_state_revision = 3;
+  string server_epoch = 4;
+}
+
+message ResumeResp {
+  enum Result {
+    RESUME_OK = 0;
+    RESUME_NEED_FULL_SYNC = 1;
+    RESUME_INVALID = 2;
+  }
+  Result result = 1;
+  uint64 server_state_revision = 2;
+  uint64 min_buffered_push_id = 3;
+  uint64 max_buffered_push_id = 4;
+}
+
+message SyncReq {
+  uint64 client_state_revision = 1;
+}
+
+message SyncResp {}
+
+message SyncSnapshotPush {
+  uint64 server_state_revision = 1;
+  bytes snapshot = 2;
+}
+
+message Error {
+  int32 code = 1;
+  string message = 2;
+  bool retryable = 3;
+  map<string, string> detail = 4;
+}
+

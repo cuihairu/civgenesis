@@ -1,0 +1,5 @@
+io.github.cuihairu.civgenesis.spring.CivgenesisDispatcherAutoConfiguration
+io.github.cuihairu.civgenesis.spring.observability.CivgenesisObservabilityAutoConfiguration
+io.github.cuihairu.civgenesis.spring.jobs.CivgenesisJobsAutoConfiguration
+io.github.cuihairu.civgenesis.spring.CivgenesisWsAutoConfiguration
+io.github.cuihairu.civgenesis.spring.registry.CivgenesisRegistryAutoConfiguration
