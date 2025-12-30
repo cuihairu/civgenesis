@@ -10,6 +10,11 @@ public class CivgenesisDispatcherProperties {
     private int maxInFlightPerConnection = 64;
     private RawPayloadMode rawPayloadMode = RawPayloadMode.RETAIN;
     private boolean closeOnNeedLogin = false;
+    private boolean dedupEnabled = true;
+    private int dedupMaxEntries = 1024;
+    private long dedupTtlMillis = 30_000;
+    private int maxBufferedPushCount = 2000;
+    private long maxBufferedPushAgeMillis = 60_000;
 
     public boolean isEnabled() {
         return enabled;
@@ -50,5 +55,44 @@ public class CivgenesisDispatcherProperties {
     public void setCloseOnNeedLogin(boolean closeOnNeedLogin) {
         this.closeOnNeedLogin = closeOnNeedLogin;
     }
-}
 
+    public boolean isDedupEnabled() {
+        return dedupEnabled;
+    }
+
+    public void setDedupEnabled(boolean dedupEnabled) {
+        this.dedupEnabled = dedupEnabled;
+    }
+
+    public int getDedupMaxEntries() {
+        return dedupMaxEntries;
+    }
+
+    public void setDedupMaxEntries(int dedupMaxEntries) {
+        this.dedupMaxEntries = dedupMaxEntries;
+    }
+
+    public long getDedupTtlMillis() {
+        return dedupTtlMillis;
+    }
+
+    public void setDedupTtlMillis(long dedupTtlMillis) {
+        this.dedupTtlMillis = dedupTtlMillis;
+    }
+
+    public int getMaxBufferedPushCount() {
+        return maxBufferedPushCount;
+    }
+
+    public void setMaxBufferedPushCount(int maxBufferedPushCount) {
+        this.maxBufferedPushCount = maxBufferedPushCount;
+    }
+
+    public long getMaxBufferedPushAgeMillis() {
+        return maxBufferedPushAgeMillis;
+    }
+
+    public void setMaxBufferedPushAgeMillis(long maxBufferedPushAgeMillis) {
+        this.maxBufferedPushAgeMillis = maxBufferedPushAgeMillis;
+    }
+}

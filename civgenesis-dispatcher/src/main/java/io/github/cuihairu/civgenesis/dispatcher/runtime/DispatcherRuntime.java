@@ -9,10 +9,12 @@ import io.github.cuihairu.civgenesis.core.observability.CivSpan;
 import io.github.cuihairu.civgenesis.core.observability.CivTracer;
 import io.github.cuihairu.civgenesis.core.protocol.Frame;
 import io.github.cuihairu.civgenesis.core.protocol.FrameType;
+import io.github.cuihairu.civgenesis.core.protocol.ProtocolFlags;
 import io.github.cuihairu.civgenesis.core.transport.Connection;
 import io.github.cuihairu.civgenesis.dispatcher.route.RouteInvoker;
 import io.github.cuihairu.civgenesis.dispatcher.route.RouteTable;
 import io.netty.buffer.Unpooled;
+import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +32,8 @@ public final class DispatcherRuntime implements Dispatcher {
     private final CivTracer tracer;
 
     private final ConcurrentHashMap<Long, ConnectionState> states = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, PlayerSession> playerSessions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Connection> activeConnectionsByPlayerId = new ConcurrentHashMap<>();
 
     public DispatcherRuntime(RouteTable routeTable, PayloadCodec codec, ShardExecutor shardExecutor, DispatcherConfig config) {
         this(routeTable, codec, shardExecutor, config, CivMetrics.noop(), CivTracer.noop());
@@ -57,12 +61,15 @@ public final class DispatcherRuntime implements Dispatcher {
 
     @Override
     public void onConnect(Connection connection) {
-        states.put(connection.id(), new ConnectionState(connection.id()));
+        states.put(connection.id(), new ConnectionState(connection.id(), config));
     }
 
     @Override
     public void onDisconnect(Connection connection) {
-        states.remove(connection.id());
+        ConnectionState state = states.remove(connection.id());
+        if (state != null && state.playerId() != 0) {
+            activeConnectionsByPlayerId.remove(state.playerId(), connection);
+        }
     }
 
     @Override
@@ -76,15 +83,33 @@ public final class DispatcherRuntime implements Dispatcher {
         }
         long startNanos = System.nanoTime();
 
+        if (frame.ackPushId() > 0) {
+            onAck(state, frame.ackPushId());
+        }
+
         if (frame.type() == FrameType.PING) {
             connection.send(new Frame(FrameType.PONG, 0, 0, 0, 0, 0, 0, Unpooled.EMPTY_BUFFER.retainedDuplicate()));
             return;
         }
-        if (frame.type() == FrameType.ACK || frame.type() == FrameType.PONG) {
+        if (frame.type() == FrameType.ACK) {
+            if (frame.pushId() > 0) {
+                onAck(state, frame.pushId());
+            }
+            return;
+        }
+        if (frame.type() == FrameType.PONG) {
             return;
         }
         if (frame.type() != FrameType.REQ) {
             return;
+        }
+
+        if (config.dedupEnabled() && frame.seq() > 0) {
+            ResponseDedupCache.Entry cached = state.dedupCache().get(frame.seq(), System.currentTimeMillis());
+            if (cached != null) {
+                sendCachedResp(connection, cached);
+                return;
+            }
         }
 
         int msgId = frame.msgId();
@@ -94,8 +119,9 @@ public final class DispatcherRuntime implements Dispatcher {
             return;
         }
 
+        boolean requireLogin = !invoker.definition().open();
         boolean isBusiness = msgId >= 1000;
-        if (isBusiness && state.playerId() == 0) {
+        if ((requireLogin || isBusiness) && state.playerId() == 0) {
             sendError(connection, frame, CivError.of(CivErrorCodes.NEED_LOGIN, "need login", true), startNanos);
             return;
         }
@@ -171,6 +197,99 @@ public final class DispatcherRuntime implements Dispatcher {
         CivSpan span = tracer.startRequestSpan(connection.id(), state.playerId(), state.sessionEpoch(), req.msgId(), req.seq());
         try (RequestContext ctx = new RequestContext(connection, state, codec, req, this, startNanos, span)) {
             ctx.error(error);
+        }
+    }
+
+    private void sendCachedResp(Connection connection, ResponseDedupCache.Entry cached) {
+        ByteBuf payload;
+        if (cached.payloadBytes().length == 0) {
+            payload = Unpooled.EMPTY_BUFFER.retainedDuplicate();
+        } else {
+            payload = connection.alloc().buffer(cached.payloadBytes().length);
+            payload.writeBytes(cached.payloadBytes());
+        }
+        connection.send(new Frame(
+                FrameType.RESP,
+                cached.msgId(),
+                cached.seq(),
+                0,
+                cached.flags(),
+                0,
+                0,
+                payload
+        ));
+    }
+
+    void recordDedupResponse(ConnectionState state, long seq, int msgId, long flags, byte[] payloadBytes) {
+        if (!config.dedupEnabled() || seq <= 0) {
+            return;
+        }
+        state.dedupCache().put(seq, msgId, flags, payloadBytes, System.currentTimeMillis());
+    }
+
+    void attachPlayer(Connection connection, ConnectionState state, long playerId, boolean kickOld) {
+        if (playerId <= 0) {
+            throw new IllegalArgumentException("playerId must be > 0");
+        }
+        Connection existing = activeConnectionsByPlayerId.put(playerId, connection);
+        if (existing != null && existing.id() != connection.id()) {
+            if (kickOld) {
+                existing.close();
+            } else {
+                connection.close();
+                throw new IllegalStateException("player already online");
+            }
+        }
+        state.attachPlayer(playerId);
+        PlayerSession session = playerSessions.computeIfAbsent(playerId,
+                id -> new PlayerSession(id, config.maxBufferedPushCount(), config.maxBufferedPushAgeMillis()));
+        state.playerSession(session);
+    }
+
+    RequestContext.ResumeDecision resume(Connection connection, ConnectionState state, long lastAppliedPushId) {
+        PlayerSession session = state.playerSession();
+        if (session == null) {
+            return new RequestContext.ResumeDecision(false, 0, 0, () -> {});
+        }
+        PlayerSession.ReplayPlan plan = session.planReplay(lastAppliedPushId, System.currentTimeMillis());
+        return new RequestContext.ResumeDecision(plan.ok(), plan.minBufferedPushId(), plan.maxBufferedPushId(), () -> {
+            for (PlayerSession.PushEntry e : plan.toReplay()) {
+                ByteBuf payload;
+                if (e.payloadBytes().length == 0) {
+                    payload = Unpooled.EMPTY_BUFFER.retainedDuplicate();
+                } else {
+                    payload = connection.alloc().buffer(e.payloadBytes().length);
+                    payload.writeBytes(e.payloadBytes());
+                }
+                connection.send(new Frame(FrameType.PUSH, e.msgId(), 0, e.pushId(), e.flags(), e.tsMillis(), 0, payload));
+            }
+        });
+    }
+
+    long push(Connection connection, ConnectionState state, int msgId, long flags, byte[] payloadBytes) {
+        PlayerSession session = state.playerSession();
+        if (session == null) {
+            throw new IllegalStateException("push requires attached player session");
+        }
+        long pushId = session.nextPushId();
+        long ts = System.currentTimeMillis();
+        session.recordPush(new PlayerSession.PushEntry(pushId, msgId, flags, ts, payloadBytes));
+
+        ByteBuf payload;
+        if (payloadBytes.length == 0) {
+            payload = Unpooled.EMPTY_BUFFER.retainedDuplicate();
+        } else {
+            payload = connection.alloc().buffer(payloadBytes.length);
+            payload.writeBytes(payloadBytes);
+        }
+        connection.send(new Frame(FrameType.PUSH, msgId, 0, pushId, flags, ts, 0, payload));
+        return pushId;
+    }
+
+    private void onAck(ConnectionState state, long pushId) {
+        PlayerSession session = state.playerSession();
+        if (session != null) {
+            session.ack(pushId);
         }
     }
 }

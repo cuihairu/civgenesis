@@ -127,3 +127,32 @@
 - `1005 BACKPRESSURE`（连接 in-flight 超限、或目标分片队列满）
 - `1006 SERVER_BUSY`（更通用的繁忙）
 - `1007 SESSION_EXPIRED`（epoch 不匹配/切号导致）
+
+## 8) 服务端落地位置（已实现）
+
+系统 protobuf 定义：
+
+- `.proto`：`civgenesis-protocol-system/src/main/proto/civgenesis/system.proto`
+- msgId 常量：`civgenesis-protocol-system/src/main/java/io/github/cuihairu/civgenesis/protocol/system/SystemMsgIds.java`
+
+服务端系统处理器（框架代码，非业务）：
+
+- `civgenesis-system/src/main/java/io/github/cuihairu/civgenesis/system/controller/SystemClientHelloController.java`
+- `civgenesis-system/src/main/java/io/github/cuihairu/civgenesis/system/controller/SystemResumeController.java`
+- `civgenesis-system/src/main/java/io/github/cuihairu/civgenesis/system/controller/SystemSyncController.java`
+
+Spring Boot 自动装配：
+
+- `civgenesis-spring-boot-starter/src/main/java/io/github/cuihairu/civgenesis/spring/system/CivgenesisSystemAutoConfiguration.java`
+
+## 9) 需要你提供的 SPI（不包含业务逻辑）
+
+为了避免框架绑定你的账号体系/存储模型，以下能力通过 SPI 注入：
+
+- 鉴权（Resume/Login）：`civgenesis-system/src/main/java/io/github/cuihairu/civgenesis/system/auth/TokenAuthenticator.java`
+- 快照（SyncSnapshot）：`civgenesis-system/src/main/java/io/github/cuihairu/civgenesis/system/snapshot/SnapshotProvider.java`
+
+如果你没有提供实现：
+
+- `TokenAuthenticator` 默认是拒绝所有 token（用于提醒你接入自己的鉴权）
+- `SnapshotProvider` 默认不支持（只回 `SyncResp`，不推送快照）

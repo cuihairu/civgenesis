@@ -7,6 +7,48 @@
 - 这里是设计草案，具体 key 命名会在落地 Spring Boot starter 后最终确定。
 - 所有默认值都应以“可线上跑”为目标，但仍需按游戏规模压测后调整。
 
+## 0) 已落地的 Spring Boot 配置（当前版本）
+
+以下 key 已在 `civgenesis-spring-boot-starter` 中实现（建议优先按这里使用）：
+
+### 0.1 WebSocket
+
+- `civgenesis.ws.enabled`（默认 false）
+- `civgenesis.ws.port`（默认 8888）
+- `civgenesis.ws.path`（默认 `/`）
+- `civgenesis.ws.max-frame-bytes`（默认 1MiB）
+- `civgenesis.ws.idle-timeout-seconds`（默认 30）
+- `civgenesis.ws.ping-before-close`（默认 true）
+- `civgenesis.ws.ping-timeout-millis`（默认 3000）
+
+### 0.2 Dispatcher
+
+- `civgenesis.dispatcher.enabled`（默认 true）
+- `civgenesis.dispatcher.shards`（默认 64）
+- `civgenesis.dispatcher.max-in-flight-per-connection`（默认 64）
+- `civgenesis.dispatcher.raw-payload-mode`（默认 `RETAIN`）
+- `civgenesis.dispatcher.close-on-need-login`（默认 false）
+- `civgenesis.dispatcher.dedup-enabled`（默认 true）
+- `civgenesis.dispatcher.dedup-max-entries`（默认 1024）
+- `civgenesis.dispatcher.dedup-ttl-millis`（默认 30000）
+- `civgenesis.dispatcher.max-buffered-push-count`（默认 2000）
+- `civgenesis.dispatcher.max-buffered-push-age-millis`（默认 60000）
+
+### 0.3 系统消息（ClientHello/Resume/Sync）
+
+- `civgenesis.system.enabled`（默认 true）
+
+> `Resume/Sync` 的鉴权与快照生成是可插拔 SPI：需要你提供 `TokenAuthenticator` 与 `SnapshotProvider` 的实现（见 `docs/SYSTEM_MESSAGES.md`）。
+
+### 0.4 可观测性
+
+见 `docs/OBSERVABILITY.md`。
+
+### 0.5 Jobs
+
+- `civgenesis.jobs.enabled`（默认 false）
+- `civgenesis.jobs.thread-name`（默认 `civgenesis-job-`）
+
 ## 1) 传输（WebSocket）
 
 - `civgenesis.transport=ws`（默认）

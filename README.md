@@ -120,7 +120,14 @@ public class EchoController {
 }
 ```
 
-3) Configure
+3) Provide system integrations (required)
+
+- Implement token authentication for `Resume`:
+  - SPI: `io.github.cuihairu.civgenesis.system.auth.TokenAuthenticator`
+- Implement snapshot generation for `SyncSnapshot` (recommended):
+  - SPI: `io.github.cuihairu.civgenesis.system.snapshot.SnapshotProvider`
+
+4) Configure
 
 ```yaml
 civgenesis:

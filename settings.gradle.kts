@@ -8,6 +8,7 @@ include(
     ":civgenesis-dispatcher",
     ":civgenesis-scheduler",
     ":civgenesis-jobs",
+    ":civgenesis-system",
     ":civgenesis-transport-netty-ws",
     ":civgenesis-protocol-system",
     ":civgenesis-codec-protobuf",

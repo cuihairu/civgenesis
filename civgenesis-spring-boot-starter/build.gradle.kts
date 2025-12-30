@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api(projects.civgenesisTransportNettyWs)
     api(projects.civgenesisCodecProtobuf)
+    api(projects.civgenesisSystem)
     api(projects.civgenesisRegistryNacos)
     api(projects.civgenesisRpcGrpc)
     api(projects.civgenesisJobs)

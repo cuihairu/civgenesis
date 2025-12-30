@@ -9,6 +9,7 @@ import io.github.cuihairu.civgenesis.core.protocol.FrameType;
 import io.github.cuihairu.civgenesis.core.protocol.ProtocolFlags;
 import io.github.cuihairu.civgenesis.core.transport.Connection;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 
 import java.util.Objects;
@@ -94,6 +95,8 @@ public final class RequestContext implements AutoCloseable {
         }
         try {
             ByteBuf payload = codec.encode(connection.alloc(), resp);
+            byte[] bytes = payload == null ? new byte[0] : ByteBufUtil.getBytes(payload, payload.readerIndex(), payload.readableBytes(), false);
+            runtime.recordDedupResponse(state, req.seq(), req.msgId(), 0, bytes);
             Frame frame = new Frame(FrameType.RESP, req.msgId(), req.seq(), 0, 0, 0, 0, payload);
             connection.send(frame);
         } catch (Exception e) {
@@ -115,6 +118,8 @@ public final class RequestContext implements AutoCloseable {
         }
         try {
             ByteBuf payload = codec.encodeError(connection.alloc(), error);
+            byte[] bytes = payload == null ? new byte[0] : ByteBufUtil.getBytes(payload, payload.readerIndex(), payload.readableBytes(), false);
+            runtime.recordDedupResponse(state, req.seq(), req.msgId(), ProtocolFlags.ERROR, bytes);
             Frame frame = new Frame(FrameType.RESP, req.msgId(), req.seq(), 0, ProtocolFlags.ERROR, 0, 0, payload);
             connection.send(frame);
         } catch (Exception e) {
@@ -129,6 +134,30 @@ public final class RequestContext implements AutoCloseable {
         span.setError(error.message());
         span.close();
         runtime.onResponseComplete(state, req.seq());
+    }
+
+    public void attachPlayer(long playerId, boolean kickExistingSession) {
+        runtime.attachPlayer(connection, state, playerId, kickExistingSession);
+    }
+
+    public ResumeDecision resume(long lastAppliedPushId) {
+        return runtime.resume(connection, state, lastAppliedPushId);
+    }
+
+    public long push(int msgId, Object message, long flags) {
+        try {
+            ByteBuf payload = codec.encode(connection.alloc(), message);
+            byte[] bytes = payload == null ? new byte[0] : ByteBufUtil.getBytes(payload, payload.readerIndex(), payload.readableBytes(), false);
+            if (payload != null) {
+                payload.release();
+            }
+            return runtime.push(connection, state, msgId, flags, bytes);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public record ResumeDecision(boolean resumeOk, long minBufferedPushId, long maxBufferedPushId, Runnable replay) {
     }
 
     public void needLogin() {

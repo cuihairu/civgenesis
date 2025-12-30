@@ -70,7 +70,12 @@ public class CivgenesisDispatcherAutoConfiguration {
         DispatcherConfig config = new DispatcherConfig(
                 props.getMaxInFlightPerConnection(),
                 props.getRawPayloadMode(),
-                props.isCloseOnNeedLogin()
+                props.isCloseOnNeedLogin(),
+                props.isDedupEnabled(),
+                props.getDedupMaxEntries(),
+                props.getDedupTtlMillis(),
+                props.getMaxBufferedPushCount(),
+                props.getMaxBufferedPushAgeMillis()
         );
         return new DispatcherRuntime(routeTable, codec, shardExecutor, config, metrics, tracer);
     }

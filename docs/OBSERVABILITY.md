@@ -36,6 +36,8 @@ curl http://127.0.0.1:9090/metrics
 - `civgenesis_dispatch_in_flight`：当前 in-flight 请求数（gauge）
 - `civgenesis_dispatch_requests_total{msg_id=...,status="ok|error",error_code=...}`：请求完成数（counter）
 - `civgenesis_dispatch_request_seconds{msg_id=...,status=...,error_code=...}`：请求耗时（timer/histogram）
+- `civgenesis_job_total{job=...,status="ok|error"}`：后台任务执行次数（counter）
+- `civgenesis_job_seconds{job=...,status="ok|error"}`：后台任务耗时（timer/histogram）
 
 > `msg_id` 有一定基数，建议按“模块/玩法”规划 msgId 段，避免无限增长导致指标基数过大。
 

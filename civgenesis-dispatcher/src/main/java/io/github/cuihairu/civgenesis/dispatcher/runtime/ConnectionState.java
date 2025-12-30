@@ -10,9 +10,12 @@ public final class ConnectionState {
     private final AtomicLong sessionEpoch = new AtomicLong(0);
     private final AtomicInteger inFlight = new AtomicInteger(0);
     private final ConcurrentHashMap<Long, Boolean> inFlightSeq = new ConcurrentHashMap<>();
+    private volatile PlayerSession playerSession;
+    private final ResponseDedupCache dedupCache;
 
-    ConnectionState(long connectionId) {
+    ConnectionState(long connectionId, DispatcherConfig config) {
         this.connectionId = connectionId;
+        this.dedupCache = new ResponseDedupCache(config.dedupMaxEntries(), config.dedupTtlMillis());
     }
 
     public long connectionId() {
@@ -63,5 +66,17 @@ public final class ConnectionState {
     public void detachPlayer() {
         this.playerId.set(0);
         this.sessionEpoch.incrementAndGet();
+    }
+
+    PlayerSession playerSession() {
+        return playerSession;
+    }
+
+    void playerSession(PlayerSession session) {
+        this.playerSession = session;
+    }
+
+    ResponseDedupCache dedupCache() {
+        return dedupCache;
     }
 }
