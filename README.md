@@ -29,7 +29,7 @@ License: Apache-2.0 (see `LICENSE`).
 flowchart LR
   subgraph Client
     U[Unity SDK]:::c
-    T[TS SDK\n(Cocos/LayaAir)]:::c
+    T[TS SDK - Cocos/LayaAir]:::c
   end
 
   U -->|WS Binary + TLV| WS
@@ -38,13 +38,13 @@ flowchart LR
   subgraph Game Gateway (Netty)
     WS[Netty WebSocket Server]:::s
     DEC[TLV Frame Decoder/Encoder]:::s
-    DISP[Dispatcher Runtime\n@GameController/@GameRoute]:::s
-    SHARD[Shard Executor\n(player/channel)]:::s
+    DISP[Dispatcher Runtime - @GameController/@GameRoute]:::s
+    SHARD[Shard Executor - player/channel]:::s
     SCHED[HashedWheel Scheduler]:::s
   end
 
   WS --> DEC --> DISP --> SHARD
-  SHARD -->|invoke handler| H[Game Handlers\n(your code)]:::a
+  SHARD -->|invoke handler| H[Game Handlers - your code]:::a
   H -->|RESP/PUSH| DISP
   SCHED --> SHARD
 
@@ -52,7 +52,7 @@ flowchart LR
     NACOS[Nacos Registry/Discovery]:::i
     GRPC[gRPC / IPC endpoints]:::i
     OBS[Prometheus / OTel]:::i
-    JOBS[Jobs Runner\n(local + leader-only SPI)]:::i
+    JOBS[Jobs Runner - local + leader-only SPI]:::i
   end
 
   DISP --- OBS
