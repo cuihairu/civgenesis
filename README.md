@@ -35,7 +35,7 @@ flowchart LR
   U -->|WS Binary + TLV| WS
   T -->|WS Binary + TLV| WS
 
-  subgraph Game Gateway (Netty)
+  subgraph GameGateway["Game Gateway - Netty"]
     WS[Netty WebSocket Server]:::s
     DEC[TLV Frame Decoder/Encoder]:::s
     DISP[Dispatcher Runtime - @GameController/@GameRoute]:::s
@@ -48,7 +48,7 @@ flowchart LR
   H -->|RESP/PUSH| DISP
   SCHED --> SHARD
 
-  subgraph Infra
+  subgraph Infra["Infra"]
     NACOS[Nacos Registry/Discovery]:::i
     GRPC[gRPC / IPC endpoints]:::i
     OBS[Prometheus / OTel]:::i
@@ -60,10 +60,10 @@ flowchart LR
   JOBS --- OBS
   DISP --- GRPC
   GRPC --- NACOS
-  classDef c fill:#1f2937,stroke:#0b1220,color:#ffffff;
-  classDef s fill:#0ea5e9,stroke:#075985,color:#ffffff;
-  classDef a fill:#22c55e,stroke:#15803d,color:#ffffff;
-  classDef i fill:#a855f7,stroke:#6b21a8,color:#ffffff;
+  classDef c fill:#1f2937,stroke:#0b1220,color:#ffffff
+  classDef s fill:#0ea5e9,stroke:#075985,color:#ffffff
+  classDef a fill:#22c55e,stroke:#15803d,color:#ffffff
+  classDef i fill:#a855f7,stroke:#6b21a8,color:#ffffff
 ```
 
 ## Repo layout
