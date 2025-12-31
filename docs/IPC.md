@@ -89,7 +89,7 @@ CivGenesis 默认提供 Nacos 的注册/发现实现（见模块 `civgenesis-reg
 
 - `tcp://10.0.0.12:9001`
 - `uds:///var/run/civgenesis/game-2.sock`
-- `aeron:ipc?dir=/dev/shm/aeron&streamId=1101`
+- `aeron:ipc?dir=/dev/shm/aeron&inStreamId=1101&outStreamId=1102`
 - `grpc://10.0.0.12:50051`
 
 安全建议：
@@ -140,7 +140,10 @@ CivGenesis 默认提供 Nacos 的注册/发现实现（见模块 `civgenesis-reg
 - 同机 IPC 通道（`aeron:ipc`）天然支持 backpressure（`offer` 返回值表示是否可写）
 - 也能扩展到跨机 UDP（如果未来需要）
 
-> 说明：Aeron 的 IPC 语义更接近“同机 pub/sub”；如果你把同一个 `streamId` 用作多方共享通道，需要在消息里带上 `peerId`/`instanceId` 并过滤，否则会收到不属于自己的消息。本仓库的 `AeronIpcChannel` 已默认忽略“自己发出的消息”（避免自收）。
+> 说明：
+>
+> - 推荐使用 **duplex**：`inStreamId/outStreamId` 分离成两条流做点对点（或固定方向）通信。
+> - 若使用单 `streamId`（共享通道），Aeron 的 IPC 语义更接近“同机 pub/sub”；需要在消息里带上 `peerId/instanceId` 并过滤，否则会收到不属于自己的消息。本仓库的 `AeronIpcChannel` 已默认忽略“自己发出的消息”（避免自收）。
 
 自研 mmap ring-buffer 也可以做背压，但需要额外设计：
 

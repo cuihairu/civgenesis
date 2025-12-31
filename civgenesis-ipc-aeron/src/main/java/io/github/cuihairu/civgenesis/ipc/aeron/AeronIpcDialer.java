@@ -6,65 +6,42 @@ import io.github.cuihairu.civgenesis.ipc.IpcLink;
 import io.github.cuihairu.civgenesis.ipc.IpcMessageHandler;
 import io.github.cuihairu.civgenesis.registry.Endpoint;
 
-import java.net.URI;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Objects;
 
 public final class AeronIpcDialer implements IpcDialer, AutoCloseable {
-    private final Aeron aeron;
+    private final String defaultDir;
+    private final ConcurrentHashMap<String, Aeron> clients = new ConcurrentHashMap<>();
 
     public AeronIpcDialer(Path aeronDir) {
         Objects.requireNonNull(aeronDir, "aeronDir");
-        Aeron.Context ctx = new Aeron.Context().aeronDirectoryName(aeronDir.toString());
-        this.aeron = Aeron.connect(ctx);
+        this.defaultDir = aeronDir.toString();
+    }
+
+    public AeronIpcDialer() {
+        this.defaultDir = null;
     }
 
     @Override
     public IpcLink connect(Endpoint endpoint, IpcMessageHandler handler) {
-        Objects.requireNonNull(endpoint, "endpoint");
-        URI uri = URI.create(endpoint.uri());
-        if (!"aeron".equalsIgnoreCase(uri.getScheme())) {
-            throw new IllegalArgumentException("not an aeron endpoint: " + endpoint.uri());
+        AeronIpcEndpoint parsed = AeronIpcEndpoint.parse(endpoint, defaultDir);
+        Aeron aeron = clients.computeIfAbsent(parsed.dir(), dir -> Aeron.connect(new Aeron.Context().aeronDirectoryName(dir)));
+        if (parsed.inStreamId() == parsed.outStreamId()) {
+            return new AeronIpcChannel(aeron, parsed.inStreamId(), handler);
         }
-        String ssp = uri.getSchemeSpecificPart();
-        if (ssp == null || !ssp.startsWith("ipc")) {
-            throw new IllegalArgumentException("not an aeron ipc endpoint: " + endpoint.uri());
-        }
-        String query = uri.getQuery();
-        if (query == null || query.isBlank()) {
-            throw new IllegalArgumentException("missing query for aeron endpoint: " + endpoint.uri());
-        }
-        int streamId = parseIntQuery(query, "streamId", -1);
-        if (streamId <= 0) {
-            throw new IllegalArgumentException("missing/invalid streamId: " + endpoint.uri());
-        }
-        return new AeronIpcChannel(aeron, streamId, handler);
+        return new AeronDuplexIpcChannel(aeron, parsed.inStreamId(), parsed.outStreamId(), handler);
     }
 
     @Override
     public void close() {
-        aeron.close();
-    }
-
-    private static int parseIntQuery(String query, String key, int defaultValue) {
-        String[] parts = query.split("&");
-        for (String part : parts) {
-            int idx = part.indexOf('=');
-            if (idx <= 0) {
-                continue;
-            }
-            String k = part.substring(0, idx);
-            if (!k.equals(key)) {
-                continue;
-            }
-            String v = part.substring(idx + 1);
+        for (Map.Entry<String, Aeron> e : clients.entrySet()) {
             try {
-                return Integer.parseInt(v);
-            } catch (NumberFormatException ignore) {
-                return defaultValue;
+                e.getValue().close();
+            } catch (Exception ignore) {
             }
         }
-        return defaultValue;
+        clients.clear();
     }
 }
-
