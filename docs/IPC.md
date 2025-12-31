@@ -110,6 +110,15 @@ CivGenesis 默认提供 Nacos 的注册/发现实现（见模块 `civgenesis-reg
 - `EndpointResolver`：从注册中心拿到候选实例 + 元信息
 - `LinkDialer`：根据元信息选择传输并建立连接
 
+本仓库参考实现（框架层积木）：
+
+- 选路：`io.github.cuihairu.civgenesis.ipc.routing.EndpointSelector`
+  - 同机：优先 `AERON_IPC` > `UDS` > `TCP(loopback)`
+  - 异机：优先 `TCP(non-loopback)`
+- Dialer：
+  - UDS：`io.github.cuihairu.civgenesis.ipc.uds.UdsIpcDialer`
+  - Aeron：`io.github.cuihairu.civgenesis.ipc.aeron.AeronIpcDialer`
+
 ## 5) 背压（Backpressure）最佳实践：统一“信用/配额”语义
 
 无论使用 TCP/UDS/SHM，建议在“框架层”统一背压语义，避免不同传输各自为政：
@@ -130,6 +139,8 @@ CivGenesis 默认提供 Nacos 的注册/发现实现（见模块 `civgenesis-reg
 
 - 同机 IPC 通道（`aeron:ipc`）天然支持 backpressure（`offer` 返回值表示是否可写）
 - 也能扩展到跨机 UDP（如果未来需要）
+
+> 说明：Aeron 的 IPC 语义更接近“同机 pub/sub”；如果你把同一个 `streamId` 用作多方共享通道，需要在消息里带上 `peerId`/`instanceId` 并过滤，否则会收到不属于自己的消息。本仓库的 `AeronIpcChannel` 已默认忽略“自己发出的消息”（避免自收）。
 
 自研 mmap ring-buffer 也可以做背压，但需要额外设计：
 

@@ -34,6 +34,10 @@ public final class AeronIpcChannel implements IpcLink, Closeable {
         this.sub = aeron.addSubscription(channel, streamId);
 
         FragmentHandler fragmentHandler = (DirectBuffer buffer, int offset, int length, io.aeron.logbuffer.Header header) -> {
+            int selfSessionId = pub.sessionId();
+            if (selfSessionId != 0 && header.sessionId() == selfSessionId) {
+                return;
+            }
             if (handler == null) {
                 return;
             }
