@@ -80,6 +80,11 @@
 
 > 说明：`COMPRESS/ENCRYPT` 的具体算法由 `ClientHello` 协商决定；若未协商则默认不启用。
 
+本仓库当前内置的可选实现：
+
+- `COMPRESS`：`GZIP`（服务端通过 `civgenesis.system.gzip-enabled=true` 开启，并在 `ClientHello` 中选择 `COMPRESSION_GZIP`）
+- `ENCRYPT`：推荐直接使用 TLS（`wss://` / 内网 mTLS），并在 `ClientHello` 选择 `CIPHER_TLS`
+
 ## 2. Req/Resp 语义（支持重试/超时）
 
 ### 2.1 基本规则

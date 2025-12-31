@@ -12,7 +12,7 @@ final class ResponseDedupCache {
     ResponseDedupCache(int maxEntries, long ttlMillis) {
         this.maxEntries = Math.max(0, maxEntries);
         this.ttlMillis = Math.max(0, ttlMillis);
-        this.map = new LinkedHashMap<>(16, 0.75f, false);
+        this.map = new LinkedHashMap<>(16, 0.75f, true);
     }
 
     Entry get(long seq, long nowMillis) {
@@ -51,4 +51,3 @@ final class ResponseDedupCache {
 
     record Entry(long seq, int msgId, long flags, byte[] payloadBytes, long storedAtMillis) {}
 }
-

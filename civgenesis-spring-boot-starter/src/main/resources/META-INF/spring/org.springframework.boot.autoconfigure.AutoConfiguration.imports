@@ -3,4 +3,5 @@ io.github.cuihairu.civgenesis.spring.observability.CivgenesisObservabilityAutoCo
 io.github.cuihairu.civgenesis.spring.jobs.CivgenesisJobsAutoConfiguration
 io.github.cuihairu.civgenesis.spring.system.CivgenesisSystemAutoConfiguration
 io.github.cuihairu.civgenesis.spring.CivgenesisWsAutoConfiguration
+io.github.cuihairu.civgenesis.spring.CivgenesisTcpAutoConfiguration
 io.github.cuihairu.civgenesis.spring.registry.CivgenesisRegistryAutoConfiguration

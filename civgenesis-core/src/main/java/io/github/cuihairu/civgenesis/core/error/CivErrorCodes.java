@@ -10,5 +10,5 @@ public final class CivErrorCodes {
     public static final int BACKPRESSURE = 1005;
     public static final int SERVER_BUSY = 1006;
     public static final int SESSION_EXPIRED = 1007;
+    public static final int REQUEST_TIMEOUT = 1008;
 }
-

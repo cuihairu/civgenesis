@@ -1,0 +1,16 @@
+civgenesis:
+  ws:
+    enabled: true
+    port: 8888
+    path: /ws
+  dispatcher:
+    enabled: true
+    shards: 4
+  system:
+    enabled: true
+    gzip-enabled: false
+
+logging:
+  level:
+    root: INFO
+

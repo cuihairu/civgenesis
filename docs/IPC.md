@@ -44,6 +44,10 @@
 
 - `sameHost(a,b) = host(a) == host(b) && region(a) == region(b)`（建议至少比较 region+host）
 
+本仓库参考实现：
+
+- `io.github.cuihairu.civgenesis.registry.InstanceId`
+
 ### 2.1 hostId 如何分配（关键）
 
 `hostId` 必须“稳定且唯一”，否则会误判同机。
@@ -145,3 +149,10 @@ CivGenesis 面向“游戏消息”（客户端）已经定义了：
 
 - 关键链路必须有背压
 - 非关键链路允许 best-effort
+
+## 7) 参考实现（本仓库）
+
+- UDS：`civgenesis-ipc`（`io.github.cuihairu.civgenesis.ipc.uds.*`）
+- SHM（Aeron IPC）：`civgenesis-ipc-aeron`（`io.github.cuihairu.civgenesis.ipc.aeron.*`）
+
+> 说明：这两个实现都是“参考实现/框架层积木”，不绑定业务协议；建议在你的服务间协议上叠加超时、重试与更细的背压策略。

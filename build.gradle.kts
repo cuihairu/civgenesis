@@ -67,6 +67,8 @@ val jacocoRootReport = tasks.register<JacocoReport>("jacocoRootReport") {
     sourceDirectories.from(sources)
 
     reports {
+        xml.required.set(true)
+        html.required.set(true)
         xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/root/jacocoRootReport.xml"))
         html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/root/html"))
     }

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package civgenesis.examples.echo;
+
+option java_package = "io.github.cuihairu.civgenesis.examples.echo.proto";
+option java_multiple_files = true;
+
+message EchoReq {
+  string text = 1;
+}
+
+message EchoResp {
+  string text = 1;
+}
+

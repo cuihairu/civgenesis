@@ -17,6 +17,7 @@ export default defineUserConfig({
 
     navbar: [
       { text: '文档', link: '/' },
+      { text: 'Quickstart', link: '/QUICKSTART' },
       { text: '设计', link: '/DESIGN' },
       { text: '协议', link: '/PROTOCOL' },
       { text: 'SDK', link: '/CLIENT_SDK' },
@@ -26,12 +27,14 @@ export default defineUserConfig({
       { text: 'IPC', link: '/IPC' },
       { text: 'Nacos', link: '/REGISTRY_NACOS' },
       { text: 'gRPC', link: '/GRPC' },
-      { text: 'Dispatcher', link: '/DISPATCHER' }
+      { text: 'Dispatcher', link: '/DISPATCHER' },
+      { text: '集成', link: '/INTEGRATION' }
     ],
     sidebar: [
       {
         text: '指南',
         children: [
+          '/QUICKSTART',
           '/DESIGN',
           '/PROTOCOL',
           '/PROTOBUF',
@@ -46,6 +49,7 @@ export default defineUserConfig({
           '/CONFIG',
           '/SECURITY',
           '/SYSTEM_MESSAGES',
+          '/INTEGRATION',
           '/HOTFIX'
         ]
       }

@@ -7,6 +7,7 @@ import io.github.cuihairu.civgenesis.core.executor.ShardExecutor;
 import io.github.cuihairu.civgenesis.core.observability.CivMetrics;
 import io.github.cuihairu.civgenesis.core.observability.CivSpan;
 import io.github.cuihairu.civgenesis.core.observability.CivTracer;
+import io.github.cuihairu.civgenesis.core.protocol.Compression;
 import io.github.cuihairu.civgenesis.core.protocol.Frame;
 import io.github.cuihairu.civgenesis.core.protocol.FrameType;
 import io.github.cuihairu.civgenesis.core.protocol.ProtocolFlags;
@@ -20,6 +21,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DispatcherRuntime implements Dispatcher {
     private static final Logger log = LoggerFactory.getLogger(DispatcherRuntime.class);
@@ -34,6 +40,10 @@ public final class DispatcherRuntime implements Dispatcher {
     private final ConcurrentHashMap<Long, ConnectionState> states = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, PlayerSession> playerSessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Connection> activeConnectionsByPlayerId = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService timeouts = Executors.newSingleThreadScheduledExecutor(
+            Thread.ofPlatform().daemon(true).name("civgenesis-dispatch-timeout-", 0).factory()
+    );
+    private final AtomicInteger[] inFlightByShard;
 
     public DispatcherRuntime(RouteTable routeTable, PayloadCodec codec, ShardExecutor shardExecutor, DispatcherConfig config) {
         this(routeTable, codec, shardExecutor, config, CivMetrics.noop(), CivTracer.noop());
@@ -53,6 +63,10 @@ public final class DispatcherRuntime implements Dispatcher {
         this.config = Objects.requireNonNullElse(config, DispatcherConfig.defaults());
         this.metrics = Objects.requireNonNullElse(metrics, CivMetrics.noop());
         this.tracer = Objects.requireNonNullElse(tracer, CivTracer.noop());
+        this.inFlightByShard = new AtomicInteger[shardExecutor.shards()];
+        for (int i = 0; i < inFlightByShard.length; i++) {
+            inFlightByShard[i] = new AtomicInteger(0);
+        }
     }
 
     DispatcherConfig config() {
@@ -69,6 +83,22 @@ public final class DispatcherRuntime implements Dispatcher {
         ConnectionState state = states.remove(connection.id());
         if (state != null && state.playerId() != 0) {
             activeConnectionsByPlayerId.remove(state.playerId(), connection);
+        }
+        if (state != null) {
+            for (int shardIdx : state.clearInFlightShardIndices()) {
+                if (shardIdx >= 0 && shardIdx < inFlightByShard.length) {
+                    inFlightByShard[shardIdx].decrementAndGet();
+                }
+                metrics.onInFlightDec();
+            }
+            for (ConnectionState.DeferredEntry e : state.removeAllDeferred()) {
+                try {
+                    e.span().setError("disconnected");
+                } catch (Exception ignore) {
+                } finally {
+                    e.span().close();
+                }
+            }
         }
     }
 
@@ -104,6 +134,11 @@ public final class DispatcherRuntime implements Dispatcher {
             return;
         }
 
+        if (frame.hasFlag(ProtocolFlags.COMPRESS) && state.compression() == Compression.NONE) {
+            sendError(connection, frame, CivError.of(CivErrorCodes.UNSUPPORTED_PROTOCOL, "compression not negotiated", true), startNanos);
+            return;
+        }
+
         if (config.dedupEnabled() && frame.seq() > 0) {
             ResponseDedupCache.Entry cached = state.dedupCache().get(frame.seq(), System.currentTimeMillis());
             if (cached != null) {
@@ -126,18 +161,32 @@ public final class DispatcherRuntime implements Dispatcher {
             return;
         }
 
-        if (!state.tryAddInFlight(frame.seq(), config.maxInFlightPerConnection())) {
-            sendError(connection, frame, CivError.of(CivErrorCodes.BACKPRESSURE, "backpressure", true), startNanos);
-            return;
-        }
-        if (frame.seq() > 0) {
-            metrics.onInFlightInc();
-        }
-
         long shardKey = switch (invoker.definition().shardBy()) {
             case PLAYER -> state.playerId() != 0 ? state.playerId() : connection.id();
             case CHANNEL -> connection.id();
         };
+        int shardIdx = shardExecutor.shardIndex(shardKey);
+
+        if (frame.seq() > 0) {
+            int maxPerShard = config.maxInFlightPerShard();
+            if (maxPerShard > 0) {
+                int cur = inFlightByShard[shardIdx].incrementAndGet();
+                if (cur > maxPerShard) {
+                    inFlightByShard[shardIdx].decrementAndGet();
+                    sendError(connection, frame, CivError.of(CivErrorCodes.BACKPRESSURE, "backpressure: shard overloaded", true), startNanos);
+                    return;
+                }
+            }
+
+            if (!state.tryAddInFlight(frame.seq(), config.maxInFlightPerConnection(), shardIdx)) {
+                if (maxPerShard > 0) {
+                    inFlightByShard[shardIdx].decrementAndGet();
+                }
+                sendError(connection, frame, CivError.of(CivErrorCodes.BACKPRESSURE, "backpressure: duplicate/too many in-flight", true), startNanos);
+                return;
+            }
+            metrics.onInFlightInc();
+        }
 
         if (frame.payload() != null) {
             frame.payload().retain();
@@ -147,7 +196,7 @@ public final class DispatcherRuntime implements Dispatcher {
             CivSpan span = tracer.startRequestSpan(connection.id(), state.playerId(), state.sessionEpoch(), msgId, frame.seq());
             RequestContext ctx = null;
             try (frame) {
-                ctx = new RequestContext(connection, state, codec, frame, this, startNanos, span);
+                ctx = new RequestContext(connection, state, codec, frame, this, startNanos, span, shardKey);
                 try {
                     invoker.invoke(ctx, frame);
                     if (!ctx.hasResponded() && !ctx.isDeferred()) {
@@ -179,9 +228,56 @@ public final class DispatcherRuntime implements Dispatcher {
     }
 
     void onResponseComplete(ConnectionState state, long seq) {
-        boolean removed = state.removeInFlight(seq);
-        if (removed) {
+        int shardIdx = state.removeInFlight(seq);
+        if (shardIdx >= 0) {
+            if (shardIdx < inFlightByShard.length) {
+                inFlightByShard[shardIdx].decrementAndGet();
+            }
             metrics.onInFlightDec();
+        }
+    }
+
+    ScheduledFuture<?> scheduleTimeout(long delayMillis, Runnable task) {
+        long d = Math.max(0, delayMillis);
+        return timeouts.schedule(task, d, TimeUnit.MILLISECONDS);
+    }
+
+    void cancelDeferred(ConnectionState state, long seq) {
+        ConnectionState.DeferredEntry entry = state.removeDeferred(seq);
+        if (entry != null) {
+            entry.span().close();
+        }
+    }
+
+    void onDeferredTimeout(Connection connection, ConnectionState state, ConnectionState.DeferredEntry entry, long nowNanos) {
+        if (state.removeDeferred(entry.seq()) == null) {
+            return;
+        }
+        if (states.get(connection.id()) != state) {
+            entry.span().setError("timeout (disconnected)");
+            entry.span().close();
+            return;
+        }
+        if (state.sessionEpoch() != entry.expectedEpoch()) {
+            entry.span().setError("timeout (session expired)");
+            entry.span().close();
+            onResponseComplete(state, entry.seq());
+            return;
+        }
+        try {
+            CivError err = CivError.of(CivErrorCodes.REQUEST_TIMEOUT, "request timeout", true);
+            ByteBuf payload = codec.encodeError(connection.alloc(), err);
+            byte[] bytes = payload == null ? new byte[0] : io.netty.buffer.ByteBufUtil.getBytes(payload, payload.readerIndex(), payload.readableBytes(), false);
+            recordDedupResponse(state, entry.seq(), entry.msgId(), ProtocolFlags.ERROR, bytes);
+            connection.send(new Frame(FrameType.RESP, entry.msgId(), entry.seq(), 0, ProtocolFlags.ERROR, 0, 0, payload));
+            onRequestComplete(entry.msgId(), false, CivErrorCodes.REQUEST_TIMEOUT, nowNanos - entry.startNanos());
+            entry.span().setError("request timeout");
+        } catch (Exception e) {
+            entry.span().recordException(e);
+            entry.span().setError("timeout send failed");
+        } finally {
+            entry.span().close();
+            onResponseComplete(state, entry.seq());
         }
     }
 
@@ -195,7 +291,7 @@ public final class DispatcherRuntime implements Dispatcher {
             return;
         }
         CivSpan span = tracer.startRequestSpan(connection.id(), state.playerId(), state.sessionEpoch(), req.msgId(), req.seq());
-        try (RequestContext ctx = new RequestContext(connection, state, codec, req, this, startNanos, span)) {
+        try (RequestContext ctx = new RequestContext(connection, state, codec, req, this, startNanos, span, connection.id())) {
             ctx.error(error);
         }
     }

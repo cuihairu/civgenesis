@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     api(projects.civgenesisTransportNettyWs)
+    api(projects.civgenesisTransportNettyTcp)
     api(projects.civgenesisCodecProtobuf)
     api(projects.civgenesisSystem)
     api(projects.civgenesisRegistryNacos)

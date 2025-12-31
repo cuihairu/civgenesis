@@ -19,8 +19,14 @@ public class CivgenesisWsAutoConfiguration {
     @ConditionalOnBean(Dispatcher.class)
     public WsServer civgenesisWsServer(CivgenesisWsProperties props, Dispatcher dispatcher, CivMetrics metrics) {
         WsServerConfig config = new WsServerConfig(
+                props.getBossThreads(),
+                props.getWorkerThreads(),
                 props.getPort(),
                 props.getPath(),
+                props.getSoBacklog(),
+                props.getRecvBufBytes(),
+                props.getSendBufBytes(),
+                props.isPooledAllocator(),
                 props.getMaxFrameBytes(),
                 props.getIdleTimeoutSeconds(),
                 props.isPingBeforeClose(),

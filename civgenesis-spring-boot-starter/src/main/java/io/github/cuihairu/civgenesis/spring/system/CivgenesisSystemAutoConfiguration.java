@@ -32,7 +32,8 @@ public class CivgenesisSystemAutoConfiguration {
     public SystemServerConfig civgenesisSystemServerConfig(
             SystemServerEpoch epoch,
             CivgenesisWsProperties ws,
-            CivgenesisDispatcherProperties dispatcher
+            CivgenesisDispatcherProperties dispatcher,
+            CivgenesisSystemProperties props
     ) {
         return new SystemServerConfig(
                 1,
@@ -40,7 +41,8 @@ public class CivgenesisSystemAutoConfiguration {
                 dispatcher.getMaxInFlightPerConnection(),
                 dispatcher.getMaxBufferedPushCount(),
                 (int) dispatcher.getMaxBufferedPushAgeMillis(),
-                epoch.value()
+                epoch.value(),
+                props.isGzipEnabled()
         );
     }
 
@@ -74,4 +76,3 @@ public class CivgenesisSystemAutoConfiguration {
         return new SystemSyncController(snapshotProvider);
     }
 }
-

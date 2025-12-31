@@ -8,8 +8,11 @@ public class CivgenesisDispatcherProperties {
     private boolean enabled = true;
     private int shards = 64;
     private int maxInFlightPerConnection = 64;
+    private int maxInFlightPerShard = 2048;
     private RawPayloadMode rawPayloadMode = RawPayloadMode.RETAIN;
     private boolean closeOnNeedLogin = false;
+    private long requestTimeoutMillis = 5_000;
+    private long slowRequestMillis = 200;
     private boolean dedupEnabled = true;
     private int dedupMaxEntries = 1024;
     private long dedupTtlMillis = 30_000;
@@ -40,6 +43,14 @@ public class CivgenesisDispatcherProperties {
         this.maxInFlightPerConnection = maxInFlightPerConnection;
     }
 
+    public int getMaxInFlightPerShard() {
+        return maxInFlightPerShard;
+    }
+
+    public void setMaxInFlightPerShard(int maxInFlightPerShard) {
+        this.maxInFlightPerShard = maxInFlightPerShard;
+    }
+
     public RawPayloadMode getRawPayloadMode() {
         return rawPayloadMode;
     }
@@ -54,6 +65,22 @@ public class CivgenesisDispatcherProperties {
 
     public void setCloseOnNeedLogin(boolean closeOnNeedLogin) {
         this.closeOnNeedLogin = closeOnNeedLogin;
+    }
+
+    public long getRequestTimeoutMillis() {
+        return requestTimeoutMillis;
+    }
+
+    public void setRequestTimeoutMillis(long requestTimeoutMillis) {
+        this.requestTimeoutMillis = requestTimeoutMillis;
+    }
+
+    public long getSlowRequestMillis() {
+        return slowRequestMillis;
+    }
+
+    public void setSlowRequestMillis(long slowRequestMillis) {
+        this.slowRequestMillis = slowRequestMillis;
     }
 
     public boolean isDedupEnabled() {

@@ -3,6 +3,7 @@ package io.github.cuihairu.civgenesis.system.controller;
 import io.github.cuihairu.civgenesis.dispatcher.annotation.GameController;
 import io.github.cuihairu.civgenesis.dispatcher.annotation.GameRoute;
 import io.github.cuihairu.civgenesis.dispatcher.runtime.RequestContext;
+import io.github.cuihairu.civgenesis.core.protocol.Compression;
 import io.github.cuihairu.civgenesis.protocol.system.CipherAlgorithm;
 import io.github.cuihairu.civgenesis.protocol.system.ClientHelloReq;
 import io.github.cuihairu.civgenesis.protocol.system.ClientHelloResp;
@@ -21,18 +22,14 @@ public final class SystemClientHelloController {
     }
 
     @GameRoute(id = SystemMsgIds.CLIENT_HELLO, open = true)
-    public ClientHelloResp hello(RequestContext ctx, ClientHelloReq req) {
+    public void hello(RequestContext ctx, ClientHelloReq req) {
         int maxFrame = Math.min(config.maxFrameBytes(), Math.max(0, req.getMaxFrameBytes()));
         if (maxFrame <= 0) {
             maxFrame = config.maxFrameBytes();
         }
 
         CompressionAlgorithm selectedCompression = CompressionAlgorithm.COMPRESSION_NONE;
-        if (req.getSupportedCompressionsList().contains(CompressionAlgorithm.COMPRESSION_ZSTD)) {
-            selectedCompression = CompressionAlgorithm.COMPRESSION_ZSTD;
-        } else if (req.getSupportedCompressionsList().contains(CompressionAlgorithm.COMPRESSION_LZ4)) {
-            selectedCompression = CompressionAlgorithm.COMPRESSION_LZ4;
-        } else if (req.getSupportedCompressionsList().contains(CompressionAlgorithm.COMPRESSION_GZIP)) {
+        if (config.gzipEnabled() && req.getSupportedCompressionsList().contains(CompressionAlgorithm.COMPRESSION_GZIP)) {
             selectedCompression = CompressionAlgorithm.COMPRESSION_GZIP;
         }
 
@@ -43,7 +40,7 @@ public final class SystemClientHelloController {
             selectedCipher = CipherAlgorithm.CIPHER_NONE;
         }
 
-        return ClientHelloResp.newBuilder()
+        ctx.reply(ClientHelloResp.newBuilder()
                 .setProtocolVersion(config.protocolVersion())
                 .setSelectedCompression(selectedCompression)
                 .setSelectedCipher(selectedCipher)
@@ -52,7 +49,12 @@ public final class SystemClientHelloController {
                 .setMaxBufferedPushCount(config.maxBufferedPushCount())
                 .setMaxBufferedPushAgeMillis(config.maxBufferedPushAgeMillis())
                 .setServerEpoch(config.serverEpoch())
-                .build();
+                .build());
+
+        if (selectedCompression == CompressionAlgorithm.COMPRESSION_GZIP) {
+            ctx.setCompression(Compression.GZIP);
+        } else {
+            ctx.setCompression(Compression.NONE);
+        }
     }
 }
-

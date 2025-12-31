@@ -1,5 +1,10 @@
 package io.github.cuihairu.civgenesis.dispatcher.runtime;
 
+import io.github.cuihairu.civgenesis.core.observability.CivSpan;
+import io.github.cuihairu.civgenesis.core.protocol.Compression;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -9,9 +14,11 @@ public final class ConnectionState {
     private final AtomicLong playerId = new AtomicLong(0);
     private final AtomicLong sessionEpoch = new AtomicLong(0);
     private final AtomicInteger inFlight = new AtomicInteger(0);
-    private final ConcurrentHashMap<Long, Boolean> inFlightSeq = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Integer> inFlightSeqShardIndex = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, DeferredEntry> deferred = new ConcurrentHashMap<>();
     private volatile PlayerSession playerSession;
     private final ResponseDedupCache dedupCache;
+    private volatile Compression compression = Compression.NONE;
 
     ConnectionState(long connectionId, DispatcherConfig config) {
         this.connectionId = connectionId;
@@ -34,28 +41,74 @@ public final class ConnectionState {
         return inFlight.get();
     }
 
-    boolean tryAddInFlight(long seq, int max) {
+    boolean tryAddInFlight(long seq, int max, int shardIndex) {
         if (seq <= 0) {
             return true;
+        }
+        if (inFlightSeqShardIndex.putIfAbsent(seq, shardIndex) != null) {
+            return false;
         }
         int cur = inFlight.incrementAndGet();
         if (cur > max) {
             inFlight.decrementAndGet();
+            inFlightSeqShardIndex.remove(seq);
             return false;
         }
-        inFlightSeq.put(seq, Boolean.TRUE);
         return true;
     }
 
-    boolean removeInFlight(long seq) {
+    int removeInFlight(long seq) {
         if (seq <= 0) {
+            return -1;
+        }
+        Integer shardIndex = inFlightSeqShardIndex.remove(seq);
+        if (shardIndex != null) {
+            inFlight.decrementAndGet();
+            return shardIndex;
+        }
+        return -1;
+    }
+
+    boolean registerDeferred(DeferredEntry entry) {
+        if (entry.seq() <= 0) {
             return false;
         }
-        if (inFlightSeq.remove(seq) != null) {
-            inFlight.decrementAndGet();
-            return true;
+        return deferred.putIfAbsent(entry.seq(), entry) == null;
+    }
+
+    DeferredEntry removeDeferred(long seq) {
+        if (seq <= 0) {
+            return null;
         }
-        return false;
+        return deferred.remove(seq);
+    }
+
+    List<DeferredEntry> removeAllDeferred() {
+        if (deferred.isEmpty()) {
+            return List.of();
+        }
+        ArrayList<DeferredEntry> list = new ArrayList<>(deferred.size());
+        for (DeferredEntry e : deferred.values()) {
+            list.add(e);
+        }
+        deferred.clear();
+        return list;
+    }
+
+    List<Integer> clearInFlightShardIndices() {
+        if (inFlightSeqShardIndex.isEmpty()) {
+            inFlight.set(0);
+            return List.of();
+        }
+        ArrayList<Integer> indices = new ArrayList<>(inFlightSeqShardIndex.size());
+        for (Integer v : inFlightSeqShardIndex.values()) {
+            if (v != null) {
+                indices.add(v);
+            }
+        }
+        inFlightSeqShardIndex.clear();
+        inFlight.set(0);
+        return indices;
     }
 
     public void attachPlayer(long playerId) {
@@ -79,4 +132,21 @@ public final class ConnectionState {
     ResponseDedupCache dedupCache() {
         return dedupCache;
     }
+
+    Compression compression() {
+        return compression;
+    }
+
+    void compression(Compression compression) {
+        this.compression = compression == null ? Compression.NONE : compression;
+    }
+
+    record DeferredEntry(
+            long seq,
+            int msgId,
+            long shardKey,
+            long expectedEpoch,
+            long startNanos,
+            CivSpan span
+    ) {}
 }

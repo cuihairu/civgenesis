@@ -24,6 +24,11 @@
 
 ## 2) msgId=1 ClientHello（REQ/RESP）
 
+当前实现备注（本仓库）：
+
+- 若配置 `civgenesis.system.gzip-enabled=true`，服务端会在客户端声明支持 `GZIP` 时选择 `COMPRESSION_GZIP`，并对后续业务消息使用 `flags.COMPRESS`。
+- 加密建议使用 TLS（`wss://`）；`selectedCipher` 默认返回 `TLS`。
+
 ### ClientHelloReq
 
 - `uint32 protocolVersion`：协议版本（初始 `1`）

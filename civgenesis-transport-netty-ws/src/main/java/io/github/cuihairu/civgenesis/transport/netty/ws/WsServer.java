@@ -4,9 +4,12 @@ import io.github.cuihairu.civgenesis.core.observability.CivMetrics;
 import io.github.cuihairu.civgenesis.dispatcher.runtime.Dispatcher;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
@@ -38,12 +41,20 @@ public final class WsServer implements Closeable {
         if (channel != null) {
             return;
         }
-        bossGroup = new NioEventLoopGroup(1);
-        workerGroup = new NioEventLoopGroup();
+        bossGroup = new NioEventLoopGroup(Math.max(1, config.bossThreads()));
+        workerGroup = config.workerThreads() > 0 ? new NioEventLoopGroup(config.workerThreads()) : new NioEventLoopGroup();
         ServerBootstrap bootstrap = new ServerBootstrap()
                 .group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
+                .option(ChannelOption.SO_BACKLOG, Math.max(1, config.soBacklog()))
+                .childOption(ChannelOption.ALLOCATOR, config.pooledAllocator() ? PooledByteBufAllocator.DEFAULT : UnpooledByteBufAllocator.DEFAULT)
                 .childHandler(new WsServerInitializer(config, dispatcher, metrics));
+        if (config.recvBufBytes() > 0) {
+            bootstrap.childOption(ChannelOption.SO_RCVBUF, config.recvBufBytes());
+        }
+        if (config.sendBufBytes() > 0) {
+            bootstrap.childOption(ChannelOption.SO_SNDBUF, config.sendBufBytes());
+        }
         channel = bootstrap.bind(config.port()).sync().channel();
     }
 

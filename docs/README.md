@@ -21,6 +21,7 @@ features:
 
 ## 文档
 
+- [QUICKSTART](./QUICKSTART.md)
 - [DESIGN](./DESIGN.md)
 - [PROTOCOL](./PROTOCOL.md)
 - [PROTOBUF](./PROTOBUF.md)
@@ -35,4 +36,5 @@ features:
 - [CONFIG](./CONFIG.md)
 - [SECURITY](./SECURITY.md)
 - [SYSTEM_MESSAGES](./SYSTEM_MESSAGES.md)
+- [INTEGRATION](./INTEGRATION.md)
 - [HOTFIX](./HOTFIX.md)

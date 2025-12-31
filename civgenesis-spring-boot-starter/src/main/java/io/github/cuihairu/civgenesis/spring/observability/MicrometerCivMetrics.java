@@ -105,6 +105,7 @@ final class MicrometerCivMetrics implements CivMetrics {
                 .tag("msg_id", String.valueOf(msgId))
                 .tag("status", status)
                 .tag("error_code", String.valueOf(errorCode))
+                .publishPercentileHistogram()
                 .register(registry));
         timer.record(durationNanos, TimeUnit.NANOSECONDS);
 

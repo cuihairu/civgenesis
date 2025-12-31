@@ -14,20 +14,37 @@
 ### 0.1 WebSocket
 
 - `civgenesis.ws.enabled`（默认 false）
+- `civgenesis.ws.boss-threads`（默认 1）
+- `civgenesis.ws.worker-threads`（默认 0：Netty 默认）
 - `civgenesis.ws.port`（默认 8888）
 - `civgenesis.ws.path`（默认 `/`）
+- `civgenesis.ws.so-backlog`（默认 1024）
+- `civgenesis.ws.recv-buf-bytes`（默认 0：使用 Netty 默认）
+- `civgenesis.ws.send-buf-bytes`（默认 0：使用 Netty 默认）
+- `civgenesis.ws.pooled-allocator`（默认 true）
 - `civgenesis.ws.max-frame-bytes`（默认 1MiB）
 - `civgenesis.ws.idle-timeout-seconds`（默认 30）
 - `civgenesis.ws.ping-before-close`（默认 true）
 - `civgenesis.ws.ping-timeout-millis`（默认 3000）
+
+### 0.1.1 TCP（可选）
+
+- `civgenesis.tcp.enabled`（默认 false）
+- `civgenesis.tcp.host`（默认 `0.0.0.0`）
+- `civgenesis.tcp.port`（默认 9999）
+- `civgenesis.tcp.max-frame-bytes`（默认 1MiB）
+- `civgenesis.tcp.idle-timeout-seconds`（默认 30）
 
 ### 0.2 Dispatcher
 
 - `civgenesis.dispatcher.enabled`（默认 true）
 - `civgenesis.dispatcher.shards`（默认 64）
 - `civgenesis.dispatcher.max-in-flight-per-connection`（默认 64）
+- `civgenesis.dispatcher.max-in-flight-per-shard`（默认 2048）
 - `civgenesis.dispatcher.raw-payload-mode`（默认 `RETAIN`）
 - `civgenesis.dispatcher.close-on-need-login`（默认 false）
+- `civgenesis.dispatcher.request-timeout-millis`（默认 5000）
+- `civgenesis.dispatcher.slow-request-millis`（默认 200；设为 0 可关闭）
 - `civgenesis.dispatcher.dedup-enabled`（默认 true）
 - `civgenesis.dispatcher.dedup-max-entries`（默认 1024）
 - `civgenesis.dispatcher.dedup-ttl-millis`（默认 30000）
@@ -37,6 +54,7 @@
 ### 0.3 系统消息（ClientHello/Resume/Sync）
 
 - `civgenesis.system.enabled`（默认 true）
+- `civgenesis.system.gzip-enabled`（默认 false）
 
 > `Resume/Sync` 的鉴权与快照生成是可插拔 SPI：需要你提供 `TokenAuthenticator` 与 `SnapshotProvider` 的实现（见 `docs/SYSTEM_MESSAGES.md`）。
 

@@ -18,7 +18,7 @@ License: Apache-2.0 (see `LICENSE`).
 
 - Netty-only message pipeline (no Spring MVC/Tomcat in the hot path)
 - Custom protocol: WebSocket Binary + TLV envelope (extensible, skip-unknown) + Protobuf payload
-- Req/Resp with dedup-friendly `seq`, plus reliable push with `ACK_REQUIRED` + resume window
+- Req/Resp with dedup-friendly `seq` (server-side dedup + timeout), plus reliable push with `ACK_REQUIRED` + resume window
 - Sharded execution model for game state (by `playerId` / channel)
 - Optional Prometheus metrics + OpenTelemetry tracing
 - Nacos-based service discovery + gRPC/IPC integration points
@@ -77,14 +77,20 @@ flowchart LR
 ├── civgenesis-dispatcher/           # @GameController/@GameRoute + route scan + dispatcher runtime
 ├── civgenesis-scheduler/            # hashed wheel scheduler (time wheel)
 ├── civgenesis-transport-netty-ws/   # Netty WebSocket transport
+├── civgenesis-transport-netty-tcp/  # Netty TCP transport (length-prefixed)
 ├── civgenesis-registry/             # registry/discovery SPI
 ├── civgenesis-registry-nacos/       # Nacos implementation
 ├── civgenesis-rpc-grpc/             # gRPC helpers
 ├── civgenesis-jobs/                 # background jobs (local + leader-only lease SPI)
+├── civgenesis-jobs-lease-redis/     # optional Redis LeaseProvider reference impl
+├── civgenesis-ipc/                  # IPC reference impl (UDS) + InstanceId helpers
+├── civgenesis-ipc-aeron/            # IPC reference impl (Aeron IPC / SHM)
 ├── civgenesis-spring-boot-starter/  # auto-wiring (no MVC), properties, lifecycle
 ├── clients/
 │   ├── unity/                       # Unity (C#) client SDK (protocol + connection mgmt)
 │   └── ts/                          # TypeScript client SDK (Cocos/LayaAir)
+├── examples/
+│   └── echo-server/                 # minimal server example (no gameplay logic)
 └── docs/                            # VuePress docs (published via GitHub Pages)
 ```
 
@@ -143,6 +149,7 @@ civgenesis:
 ## Docs
 
 - Docs index: `docs/README.md`
+- Quickstart (example app): `docs/QUICKSTART.md`
 - GitHub Pages (CI published): `https://cuihairu.github.io/civgenesis/`
 - Protocol: `docs/PROTOCOL.md`
 - Protobuf workflow: `docs/PROTOBUF.md`
@@ -150,6 +157,7 @@ civgenesis:
 - Observability: `docs/OBSERVABILITY.md`
 - Jobs (local/distributed): `docs/JOBS.md`
 - Client SDKs: `docs/CLIENT_SDK.md`
+- Integration (admin/gateway/login): `docs/INTEGRATION.md`
 
 ## Client SDKs (protocol only)
 

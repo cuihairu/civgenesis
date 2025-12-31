@@ -40,6 +40,10 @@ DB/HTTP/gRPC 等阻塞调用不要占用分片线程；用虚拟线程/阻塞池
 
 但 **不默认提供** 分布式锁实现（因为 Redis/etcd/ZK 等选型差异很大）。
 
+本仓库提供一个可选参考实现：
+
+- `civgenesis-jobs-lease-redis`：`io.github.cuihairu.civgenesis.jobs.lease.redis.RedisLeaseProvider`
+
 ### 2.1 Spring Boot 启用 jobs（本地 runner）
 
 ```yaml
@@ -63,3 +67,8 @@ civgenesis:
 
 本项目后续会把“任务队列 SPI”独立出来（与 IPC/背压模型对齐），当前先建议你使用成熟 MQ，并在 jobs 进程里消费后通过 gRPC/IPC 调用游戏服。
 
+建议补充语义（框架层/接口层）：
+
+- 任务消息携带 `taskId`（幂等键）与 `fencingToken`（来自 `LeaseProvider`）
+- 消费端按 `taskId` 去重（或业务天然幂等），明确区分“可重试/不可重试”
+- 通过 MQ 自带的 consumer group/backpressure 控制下游压力（而不是无限堆积到游戏服）

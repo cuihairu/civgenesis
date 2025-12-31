@@ -69,8 +69,11 @@ public class CivgenesisDispatcherAutoConfiguration {
     ) {
         DispatcherConfig config = new DispatcherConfig(
                 props.getMaxInFlightPerConnection(),
+                props.getMaxInFlightPerShard(),
                 props.getRawPayloadMode(),
                 props.isCloseOnNeedLogin(),
+                props.getRequestTimeoutMillis(),
+                props.getSlowRequestMillis(),
                 props.isDedupEnabled(),
                 props.getDedupMaxEntries(),
                 props.getDedupTtlMillis(),
