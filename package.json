@@ -11,5 +11,10 @@
     "@vuepress/theme-default": "next",
     "sass-embedded": "^1.85.1",
     "vuepress": "next"
+  },
+  "overrides": {
+    "vue": "3.5.43",
+    "@vue/server-renderer": "3.5.43",
+    "source-map-js": "1.2.2"
   }
 }
