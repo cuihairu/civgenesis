@@ -31,12 +31,12 @@ JVM redefine 的限制：
 - 操作审计（谁/何时/对哪个实例/更新了哪些类）
 - 灰度策略（先单实例再扩）
 
-## 5. 推荐的 SDK 封装（无 admin）
+## 5. 推荐的 SDK 封装（无 admin，尚未内置）
 
-提供一个小型客户端封装（供你的管理项目使用）：
+建议在你的代码侧封装一个小型客户端（供你的管理项目使用；本仓库当前未内置该封装）：
 
-- `ArthasHotfixClient.redefine(target, classFiles...)`
-- `ArthasHotfixClient.jad(target, className)`
+- `ArthasHotfixClient.redefine(target, classFiles...)`（建议接口形态）
+- `ArthasHotfixClient.jad(target, className)`（建议接口形态）
 
 其中 `target` 至少包含：
 

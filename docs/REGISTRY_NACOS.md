@@ -45,6 +45,8 @@ Nacos instance metadata（默认 key）：
 civgenesis.registry.nacos.enabled=true
 civgenesis.registry.nacos.server-addr=127.0.0.1:8848
 civgenesis.registry.nacos.namespace=
+civgenesis.registry.nacos.username=
+civgenesis.registry.nacos.password=
 civgenesis.registry.nacos.group=DEFAULT_GROUP
 ```
 

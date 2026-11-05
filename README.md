@@ -110,7 +110,7 @@ Spring Boot is used for wiring/lifecycle only. Game messages do not go through S
 
 ```kotlin
 dependencies {
-  implementation("io.github.cuihairu:civgenesis-spring-boot-starter:<version>")
+  implementation("io.github.cuihairu.civgenesis:civgenesis-spring-boot-starter:<version>")
 }
 ```
 

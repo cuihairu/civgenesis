@@ -257,7 +257,7 @@
 
 ### 7.1 系统消息建议表（V1）
 
-以下仅定义“语义与流转”，具体 protobuf schema 后续在 `civgenesis-protocol` 中给出最小实现。
+以下仅定义“语义与流转”，具体 protobuf schema 已在 `civgenesis-protocol-system` 中给出最小实现（见 `docs/SYSTEM_MESSAGES.md`）。
 
 - `msgId=1 ClientHello`
   - 用途：能力协商（压缩/加密/最大包大小/客户端版本等）
