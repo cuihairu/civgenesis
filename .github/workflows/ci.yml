@@ -29,20 +29,11 @@ jobs:
           name: jacoco-report
           path: build/reports/jacoco/root
 
-      - name: Upload coverage to Codecov (token)
-        if: ${{ secrets.CODECOV_TOKEN != '' }}
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           files: build/reports/jacoco/root/jacocoRootReport.xml
           fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Upload coverage to Codecov (OIDC)
-        if: ${{ secrets.CODECOV_TOKEN == '' }}
-        uses: codecov/codecov-action@v5
-        with:
-          files: build/reports/jacoco/root/jacocoRootReport.xml
-          fail_ci_if_error: false
-          verbose: true
-          use_oidc: true
+          use_oidc: ${{ secrets.CODECOV_TOKEN == '' }}
