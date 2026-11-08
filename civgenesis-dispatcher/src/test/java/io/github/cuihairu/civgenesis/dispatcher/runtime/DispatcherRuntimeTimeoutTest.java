@@ -12,7 +12,6 @@ import io.github.cuihairu.civgenesis.dispatcher.route.RouteTable;
 import io.github.cuihairu.civgenesis.protocol.system.Error;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
-import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import org.junit.jupiter.api.Test;
 
@@ -44,15 +43,10 @@ public class DispatcherRuntimeTimeoutTest {
             TestConnection conn = new TestConnection(1);
             dispatcher.onConnect(conn);
 
-            Frame req = new Frame(FrameType.REQ, 10, 1, 0, 0, 0, 0, Unpooled.EMPTY_BUFFER.retainedDuplicate());
-            try {
-                dispatcher.handle(conn, req);
-                long deadline = System.currentTimeMillis() + 2000;
-                while (conn.frames.stream().noneMatch(f -> f.type == FrameType.RESP) && System.currentTimeMillis() < deadline) {
-                    Thread.sleep(10);
-                }
-            } finally {
-                req.close();
+            dispatcher.handle(conn, new Frame(FrameType.REQ, 10, 1, 0, 0, 0, 0, null));
+            long deadline = System.currentTimeMillis() + 2000;
+            while (conn.frames.stream().noneMatch(f -> f.type == FrameType.RESP) && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
             }
 
             CapturedFrame resp = conn.frames.stream().filter(f -> f.type == FrameType.RESP).findFirst().orElse(null);

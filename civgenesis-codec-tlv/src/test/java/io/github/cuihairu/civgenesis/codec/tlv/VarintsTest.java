@@ -5,6 +5,7 @@ import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class VarintsTest {
     @Test
@@ -23,6 +24,21 @@ class VarintsTest {
                 buf.release();
             }
         }
+    }
+
+    @Test
+    void rejectsTruncatedAndOverflowingUvarints() {
+        ByteBuf truncated = Unpooled.wrappedBuffer(new byte[] {(byte) 0x80});
+        assertThrows(IllegalArgumentException.class, () -> Varints.readUvarint(truncated));
+
+        ByteBuf tenBytes = Unpooled.wrappedBuffer(new byte[] {
+                (byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x80,
+                (byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x80, 2
+        });
+        assertThrows(IllegalArgumentException.class, () -> Varints.readUvarint(tenBytes));
+
+        ByteBuf malformedLength = Unpooled.wrappedBuffer(new byte[] {1, (byte) 0x80});
+        assertThrows(IllegalArgumentException.class, () -> Varints.readUvarint(malformedLength, 2));
     }
 }
 
