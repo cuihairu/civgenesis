@@ -69,6 +69,10 @@ public final class PrometheusHttpServer implements Closeable {
         workerGroup = null;
     }
 
+    synchronized java.net.SocketAddress localAddress() {
+        return channel == null ? null : channel.localAddress();
+    }
+
     @Override
     public void close() {
         stop();

@@ -73,6 +73,14 @@ public final class DispatcherRuntime implements Dispatcher {
         return config;
     }
 
+    ConnectionState stateForTest(long connectionId) {
+        return states.get(connectionId);
+    }
+
+    long pushForTest(Connection connection, ConnectionState state, int msgId, long flags, byte[] payloadBytes) {
+        return push(connection, state, msgId, flags, payloadBytes);
+    }
+
     @Override
     public void onConnect(Connection connection) {
         states.put(connection.id(), new ConnectionState(connection.id(), config));

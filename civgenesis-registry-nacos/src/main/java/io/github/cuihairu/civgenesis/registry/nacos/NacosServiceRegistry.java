@@ -24,6 +24,10 @@ public final class NacosServiceRegistry implements ServiceRegistry, ServiceDisco
     private final NamingService namingService;
 
     public NacosServiceRegistry(NacosRegistryConfig config) throws NacosException {
+        this(config, createNamingService(config));
+    }
+
+    NacosServiceRegistry(NacosRegistryConfig config, NamingService namingService) {
         this.config = Objects.requireNonNullElse(config, NacosRegistryConfig.defaults());
         Properties props = new Properties();
         props.setProperty("serverAddr", this.config.serverAddr());
@@ -36,7 +40,23 @@ public final class NacosServiceRegistry implements ServiceRegistry, ServiceDisco
         if (this.config.password() != null && !this.config.password().isBlank()) {
             props.setProperty("password", this.config.password());
         }
-        this.namingService = NacosFactory.createNamingService(props);
+        this.namingService = namingService;
+    }
+
+    private static NamingService createNamingService(NacosRegistryConfig config) throws NacosException {
+        NacosRegistryConfig effective = Objects.requireNonNullElse(config, NacosRegistryConfig.defaults());
+        Properties props = new Properties();
+        props.setProperty("serverAddr", effective.serverAddr());
+        if (effective.namespace() != null && !effective.namespace().isBlank()) {
+            props.setProperty("namespace", effective.namespace());
+        }
+        if (effective.username() != null && !effective.username().isBlank()) {
+            props.setProperty("username", effective.username());
+        }
+        if (effective.password() != null && !effective.password().isBlank()) {
+            props.setProperty("password", effective.password());
+        }
+        return NacosFactory.createNamingService(props);
     }
 
     public NamingService namingService() {
