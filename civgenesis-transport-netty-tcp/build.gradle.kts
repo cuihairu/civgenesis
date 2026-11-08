@@ -15,5 +15,9 @@ dependencies {
     api(libs.netty.common)
 
     api(libs.slf4j.api)
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 

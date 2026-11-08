@@ -18,4 +18,12 @@ dependencies {
     implementation(libs.spring.boot.starter)
 
     annotationProcessor(libs.spring.boot.configuration.processor)
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.spring.boot.starter)
+    testImplementation(libs.spring.boot.autoconfigure)
+    testImplementation(libs.micrometer.registry.prometheus)
+    testImplementation(projects.civgenesisIpc)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }

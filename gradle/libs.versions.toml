@@ -5,6 +5,8 @@ protobuf = "3.25.5"
 protobufPlugin = "0.9.4"
 springBoot = "3.4.1"
 junit = "5.11.3"
+mockito = "5.14.2"
+awaitility = "4.2.2"
 nacos = "2.4.3"
 grpc = "1.69.0"
 micrometer = "1.14.2"
@@ -48,6 +50,8 @@ aeron-all = { module = "io.aeron:aeron-all", version.ref = "aeron" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
 
 [plugins]
 protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }

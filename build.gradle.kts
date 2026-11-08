@@ -13,6 +13,11 @@ allprojects {
 }
 
 subprojects {
+    plugins.withId("java") {
+        tasks.withType<Test>().configureEach {
+            failOnNoDiscoveredTests = false
+        }
+    }
     plugins.withId("java-library") {
         apply(plugin = "jacoco")
 
