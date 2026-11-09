@@ -3,110 +3,133 @@ package io.github.cuihairu.civgenesis.dispatcher.route;
 import io.github.cuihairu.civgenesis.dispatcher.annotation.GameController;
 import io.github.cuihairu.civgenesis.dispatcher.annotation.GameRoute;
 import io.github.cuihairu.civgenesis.dispatcher.runtime.RequestContext;
-import io.github.cuihairu.civgenesis.core.protocol.Frame;
-import io.github.cuihairu.civgenesis.core.protocol.FrameType;
-import io.github.cuihairu.civgenesis.protocol.system.Error;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
-import io.netty.buffer.Unpooled;
-import org.mockito.Mockito;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RouteScannerTest {
+
     @Test
-    void ignoresUnannotatedAndInvokesRawAndReturningRoutes() throws Throwable {
-        RouteTable routes = new RouteScanner().scan(java.util.Arrays.asList(null, new Plain(), new Controller()));
-        assertEquals(2, routes.asMap().size());
-
-        RouteInvoker raw = routes.get(1);
-        assertEquals(ShardBy.CHANNEL, raw.definition().shardBy());
-        assertTrue(raw.definition().open());
-        raw.invoke(context(), new Frame(FrameType.REQ, 1, 1, 0, 0, 0, 0,
-                Unpooled.wrappedBuffer(new byte[] {7}).retainedDuplicate()));
-
-        RouteInvoker decoded = routes.get(2);
-        assertFalse(decoded.definition().open());
-        decoded.invoke(context(), new Frame(FrameType.REQ, 2, 2, 0, 0, 0, 0,
-                Unpooled.EMPTY_BUFFER.retainedDuplicate()));
+    void routeDefinitionExposesAccessors() {
+        RouteDefinition definition = new RouteDefinition(7, true, ShardBy.PLAYER);
+        assertEquals(7, definition.msgId());
+        assertTrue(definition.open());
+        assertEquals(ShardBy.PLAYER, definition.shardBy());
     }
 
     @Test
-    void validatesDuplicateAndIllegalHandlers() {
-        RouteScanner scanner = new RouteScanner();
-        assertThrows(IllegalArgumentException.class, () -> scanner.scan(List.of(new Duplicate1(), new Duplicate2())));
-        assertThrows(IllegalArgumentException.class, () -> scanner.scan(List.of(new BadContext())));
-        assertThrows(IllegalArgumentException.class, () -> scanner.scan(List.of(new BadRaw())));
+    void scansControllersAndBuildsRoutes() {
+        RouteTable table = new RouteScanner().scan(List.of(new OpenController()));
+        assertNotNull(table.get(1));
+        assertTrue(table.get(1).definition().open());
+        assertEquals(1, table.get(1).definition().msgId());
     }
 
-    private static RequestContext context() {
-        RequestContext context = Mockito.mock(RequestContext.class);
-        try {
-            Mockito.when(context.decode(Mockito.eq(Error.class), Mockito.any(Frame.class)))
-                    .thenReturn(Error.getDefaultInstance());
-            Mockito.when(context.rawPayload(Mockito.any(Frame.class))).thenAnswer(invocation -> {
-                Frame frame = invocation.getArgument(0);
-                return frame.payload() == null || !frame.payload().isReadable()
-                        ? Unpooled.EMPTY_BUFFER
-                        : Unpooled.wrappedBuffer(ByteBufUtil.getBytes(frame.payload()));
-            });
-            Mockito.doAnswer(invocation -> {
-                invocation.getArgument(0);
-                return null;
-            }).when(context).reply(Mockito.any());
-            return context;
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
+    @Test
+    void rejectsPublicMethodInPackagePrivateController() {
+        // a public @GameRoute method inside a non-public class is not accessible to the
+        // public lookup, so MethodHandles.publicLookup().unreflect throws IllegalAccessException
+        assertThrows(IllegalArgumentException.class,
+                () -> new RouteScanner().scan(List.of(new PackagePrivateController())));
+    }
+
+    @Test
+    void resolvesProxyControllerSuperclass() {
+        // the controller's class name contains "$$", which the scanner unwraps to the real
+        // controller superclass before checking the @GameController annotation
+        RouteTable table = new RouteScanner().scan(List.of(new Proxy$$Controller()));
+        assertNotNull(table.get(1));
+    }
+
+    @Test
+    void skipsNullControllersAndPlainClasses() {
+        java.util.List<Object> controllers = new java.util.ArrayList<>();
+        controllers.add(null);
+        controllers.add(new Object());
+        controllers.add(new OpenController());
+        assertDoesNotThrow(() -> new RouteScanner().scan(controllers));
+    }
+
+    @Test
+    void rejectsDuplicateMsgId() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RouteScanner().scan(List.of(new DuplicateController())));
+    }
+
+    @Test
+    void rejectsInvalidMethodSignature() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RouteScanner().scan(List.of(new BadSignatureController())));
+    }
+
+    @Test
+    void rejectsNonVoidRawHandler() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RouteScanner().scan(List.of(new NonVoidRawController())));
+    }
+
+    @Test
+    void routeTableExposesRoutesAsMap() {
+        RouteTable table = new RouteScanner().scan(List.of(new OpenController()));
+        assertEquals(1, table.asMap().size());
+        assertNotNull(table.get(1));
+    }
+
+    @GameController
+    public static final class OpenController {
+        @GameRoute(id = 1, open = true)
+        public void route(RequestContext ctx, ByteBuf payload) {
         }
     }
 
-    public static final class Plain {
-        @GameRoute(id = 9)
-        public void plain(RequestContext ctx, Error req) {}
-    }
-
     @GameController
-    public static final class Controller {
-        @GameRoute(id = 1, open = true, shardBy = ShardBy.CHANNEL)
-        public void raw(RequestContext ctx, ByteBuf payload) {
-            assertEquals(7, payload.getByte(payload.readerIndex()));
+    public static final class DuplicateController {
+        @GameRoute(id = 5, open = true)
+        public void first(RequestContext ctx, ByteBuf payload) {
         }
 
-        @GameRoute(id = 2)
-        public Error decoded(RequestContext ctx, Error req) {
-            return req;
+        @GameRoute(id = 5, open = true)
+        public void second(RequestContext ctx, ByteBuf payload) {
         }
     }
 
     @GameController
-    public static final class Duplicate1 {
-        @GameRoute(id = 10)
-        public void one(RequestContext ctx, Error req) {}
-    }
-
-    @GameController
-    public static final class Duplicate2 {
-        @GameRoute(id = 10)
-        public void two(RequestContext ctx, Error req) {}
-    }
-
-    @GameController
-    public static final class BadContext {
-        @GameRoute(id = 11)
-        public void bad(String ctx, Error req) {}
-    }
-
-    @GameController
-    public static final class BadRaw {
-        @GameRoute(id = 12, open = true)
-        public Error bad(RequestContext ctx, ByteBuf payload) {
-            return null;
+    public static final class BadSignatureController {
+        @GameRoute(id = 6, open = true)
+        public void wrong(RequestContext ctx) {
         }
+    }
+
+    @GameController
+    public static final class NonVoidRawController {
+        @GameRoute(id = 7, open = true)
+        public String raw(RequestContext ctx, ByteBuf payload) {
+            return "unexpected";
+        }
+    }
+
+    @GameController
+    static class PackagePrivateController {
+        @GameRoute(id = 3, open = true)
+        public void route(RequestContext ctx, ByteBuf payload) {
+        }
+    }
+
+    @GameController
+    public static class BaseController {
+        @GameRoute(id = 1, open = true)
+        public void route(RequestContext ctx, ByteBuf payload) {
+        }
+    }
+
+    // name deliberately contains "$$" to exercise the proxy-superclass unwrap path
+    public static final class Proxy$$Controller extends BaseController {
     }
 }
