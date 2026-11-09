@@ -34,12 +34,36 @@ class PrometheusHttpServerTest {
         HttpResponse<String> missing = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/missing")).GET().build(), HttpResponse.BodyHandlers.ofString());
         assertEquals(404, missing.statusCode());
 
+        // "Connection" is a restricted header for java.net.http.HttpClient, so use a raw socket
+        // the read loop runs until EOF, proving the server closed the connection after responding
+        assertTrue(rawRequest(port, "/custom").startsWith("HTTP/1.1 200"));
+        String notFound = rawRequest(port, "/missing");
+        assertTrue(notFound.startsWith("HTTP/1.1 404"));
+        assertTrue(notFound.endsWith("not found"));
+
         HttpResponse<String> method = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/custom")).POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
         assertEquals(405, method.statusCode());
 
+        server.start();
         server.stop();
         assertTrue(server.localAddress() == null);
         assertTrue(metrics.headers().firstValue("content-type").orElse("").startsWith("text/plain"));
+    }
+
+    private static String rawRequest(int port, String target) throws IOException {
+        try (java.net.Socket socket = new java.net.Socket("127.0.0.1", port)) {
+            socket.getOutputStream().write(("GET " + target + " HTTP/1.1\r\nHost: 127.0.0.1:" + port
+                    + "\r\nConnection: close\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            socket.getOutputStream().flush();
+            java.io.ByteArrayOutputStream raw = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int read;
+            java.io.InputStream in = socket.getInputStream();
+            while ((read = in.read(buffer)) != -1) {
+                raw.write(buffer, 0, read);
+            }
+            return raw.toString(java.nio.charset.StandardCharsets.US_ASCII);
+        }
     }
 
     @Test
