@@ -18,7 +18,10 @@ subprojects {
             failOnNoDiscoveredTests = false
         }
     }
-    plugins.withId("java-library") {
+    // both java-library and application (java) modules are instrumented so the
+    // aggregate report reflects the whole codebase; java-library implies java,
+    // so a single java trigger covers every module
+    plugins.withId("java") {
         apply(plugin = "jacoco")
 
         extensions.configure<JavaPluginExtension>("java") {
