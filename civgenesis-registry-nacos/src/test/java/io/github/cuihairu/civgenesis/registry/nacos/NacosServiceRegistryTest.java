@@ -70,6 +70,57 @@ class NacosServiceRegistryTest {
     }
 
     @Test
+    void defaultsConfigAndBuildsCredentialedProperties() throws Exception {
+        NamingService naming = mock(NamingService.class);
+        // a null config falls back to defaults()
+        NacosServiceRegistry defaults = new NacosServiceRegistry(null, naming);
+        assertNotNull(defaults.namingService());
+        // populated namespace/username/password set the matching properties
+        NacosServiceRegistry credentialed = NacosServiceRegistryTestFactory.create(naming,
+                new NacosRegistryConfig("addr", "namespace", "user", "pass", "GROUP"));
+        assertNotNull(credentialed.namingService());
+    }
+
+    @Test
+    void publicFactoryCreatesNamingService() throws Exception {
+        NamingService naming = mock(NamingService.class);
+        try (org.mockito.MockedStatic<com.alibaba.nacos.api.NacosFactory> factory =
+                     org.mockito.Mockito.mockStatic(com.alibaba.nacos.api.NacosFactory.class)) {
+            factory.when(() -> com.alibaba.nacos.api.NacosFactory.createNamingService(any(java.util.Properties.class)))
+                    .thenReturn(naming);
+            NacosServiceRegistry registry = new NacosServiceRegistry(
+                    new NacosRegistryConfig("addr", "namespace", "user", "pass", "GROUP"));
+            assertNotNull(registry.namingService());
+        }
+    }
+
+    @Test
+    void listReturnsEmptyWhenNoInstances() throws Exception {
+        NamingService naming = mock(NamingService.class);
+        NacosServiceRegistry registry = registry(naming);
+        doReturn(null).when(naming).getAllInstances("svc", "GROUP", true);
+        assertTrue(registry.list("svc").isEmpty());
+        doReturn(List.of()).when(naming).getAllInstances("svc", "GROUP", true);
+        assertTrue(registry.list("svc").isEmpty());
+    }
+
+    @Test
+    void listToleratesMalformedMetadata() throws Exception {
+        NamingService naming = mock(NamingService.class);
+        NacosServiceRegistry registry = registry(naming);
+        Instance instance = new Instance();
+        instance.setInstanceId("bad");
+        instance.setIp("10.0.0.1");
+        instance.setPort(2);
+        instance.setMetadata(java.util.Map.of(
+                io.github.cuihairu.civgenesis.registry.RegistryMetadata.CG_INSTANCE_ID, "not-a-number"));
+        doReturn(List.of(instance)).when(naming).getAllInstances("svc", "GROUP", true);
+        List<io.github.cuihairu.civgenesis.registry.ServiceInstance> instances = registry.list("svc");
+        assertEquals(1, instances.size());
+        assertEquals(0, instances.get(0).instanceIdLong());
+    }
+
+    @Test
     void configRequiresCoreValuesAndProvidesDefaults() {
         assertThrows(NullPointerException.class, () -> new NacosRegistryConfig(null, "", "", "", "GROUP"));
         assertThrows(NullPointerException.class, () -> new NacosRegistryConfig("addr", "", "", "", null));
