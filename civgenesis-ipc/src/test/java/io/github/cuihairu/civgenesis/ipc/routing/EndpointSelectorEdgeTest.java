@@ -43,6 +43,33 @@ class EndpointSelectorEdgeTest {
     }
 
     @Test
+    void coversRemainingFallbackAndClassificationBranches() {
+        long same = InstanceId.encode(1, 2, 3, 4, 5);
+
+        // null endpoints are treated as an empty list
+        ServiceInstance nullEndpoints = new ServiceInstance("svc", "i", same, "10.0.0.1", 7077, 0, null, Map.of());
+        assertEquals("tcp://127.0.0.1:7077", EndpointSelector.selectBest(same, nullEndpoints).orElseThrow().endpoint().uri());
+
+        // same-host with only a non-loopback tcp endpoint falls back to loopback
+        ServiceInstance nonLoopback = instance(same, List.of(new Endpoint("tcp://10.0.0.1:9")));
+        assertEquals("tcp://127.0.0.1:7077", EndpointSelector.selectBest(same, nonLoopback).orElseThrow().endpoint().uri());
+
+        // a blank host on a remote instance falls back to loopback when the port is present
+        ServiceInstance blankHost = new ServiceInstance("svc", "i", 0, "", 8080, 0, List.of(), Map.of());
+        assertEquals("tcp://127.0.0.1:8080", EndpointSelector.selectBest(0, blankHost).orElseThrow().endpoint().uri());
+        ServiceInstance nullHost = new ServiceInstance("svc", "i", 0, null, 8080, 0, List.of(), Map.of());
+        assertEquals("tcp://127.0.0.1:8080", EndpointSelector.selectBest(0, nullHost).orElseThrow().endpoint().uri());
+
+        // aeron with a non-ipc scheme part is UNKNOWN
+        assertEquals(EndpointKind.UNKNOWN, EndpointSelector.kindOf(new Endpoint("aeron:udp?streamId=1")));
+        // a malformed URI is caught and classified as UNKNOWN
+        assertEquals(EndpointKind.UNKNOWN, EndpointSelector.kindOf(new Endpoint("http://exa mple")));
+        // a host-less tcp URI reaches the null-host check in isLoopbackTcp
+        ServiceInstance hostlessTcp = instance(0, List.of(new Endpoint("tcp:///x:9")));
+        assertEquals("tcp:///x:9", EndpointSelector.selectBest(0, hostlessTcp).orElseThrow().endpoint().uri());
+    }
+
+    @Test
     void usesPortFallbackAndEmptyCases() {
         long same = InstanceId.encode(1, 2, 3, 4, 5);
         ServiceInstance loopbackPort = instance(same, List.of());
