@@ -7,6 +7,7 @@ springBoot = "3.4.1"
 junit = "5.11.3"
 mockito = "5.14.2"
 awaitility = "4.2.2"
+assertj = "3.26.0"
 nacos = "2.4.3"
 grpc = "1.69.0"
 micrometer = "1.14.2"
@@ -31,6 +32,7 @@ protobuf-util = { module = "com.google.protobuf:protobuf-java-util", version.ref
 spring-boot-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure", version.ref = "springBoot" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "springBoot" }
 spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor", version.ref = "springBoot" }
+spring-boot-test = { module = "org.springframework.boot:spring-boot-test", version.ref = "springBoot" }
 
 micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
@@ -52,6 +54,7 @@ junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 [plugins]
 protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }

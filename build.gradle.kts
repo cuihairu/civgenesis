@@ -31,6 +31,7 @@ subprojects {
         }
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()
+            jvmArgs("-XX:+EnableDynamicAgentLoading", "-Djdk.attach.allowAttachSelf=true")
             finalizedBy(tasks.named("jacocoTestReport"))
         }
         tasks.withType<JacocoReport>().configureEach {
@@ -61,6 +62,7 @@ val jacocoRootReport = tasks.register<JacocoReport>("jacocoRootReport") {
         sourceSets.named("main").get().output.asFileTree.matching {
             exclude("**/io/github/cuihairu/civgenesis/protocol/system/**")
             exclude("**/SystemMessages*.class")
+            exclude("**/examples/echo/proto/**")
         }
     }
     classDirectories.from(mainClassTrees)

@@ -23,7 +23,10 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.spring.boot.starter)
     testImplementation(libs.spring.boot.autoconfigure)
+    testImplementation(libs.spring.boot.test)
     testImplementation(libs.micrometer.registry.prometheus)
+    testImplementation(libs.assertj.core)
+    testImplementation(libs.mockito.core)
     testImplementation(projects.civgenesisIpc)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
