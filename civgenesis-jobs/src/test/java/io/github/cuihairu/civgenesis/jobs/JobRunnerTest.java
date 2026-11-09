@@ -92,6 +92,39 @@ class JobRunnerTest {
     }
 
     @Test
+    void toleratesNullJobsLeaseReleaseFailureAndCancelFailure() {
+        RecordingScheduler scheduler = new RecordingScheduler();
+        RecordingLease lease = Mockito.mock(RecordingLease.class);
+        Mockito.doThrow(new IllegalStateException("lease release failed")).when(lease).close();
+        AtomicInteger runs = new AtomicInteger();
+        try (JobRunner runner = new JobRunner(scheduler, (name, ttl) -> Optional.of(lease), CivMetrics.noop(), CivTracer.noop())) {
+            // a null entry in the job list is skipped
+            runner.start(java.util.Arrays.asList(new LeaderJob(() -> runs.incrementAndGet()), null));
+            assertEquals(1, scheduler.tasks.size());
+            scheduler.tasks.get(0).run();
+            assertEquals(1, runs.get());
+        }
+
+        // a scheduled job whose cancel() throws must not break runner close
+        JobScheduler failingCancelScheduler = new JobScheduler() {
+            @Override
+            public ScheduledJob scheduleWithFixedDelay(Duration initialDelay, Duration delay, Runnable task) {
+                return () -> {
+                    throw new IllegalStateException("cancel failed");
+                };
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        try (JobRunner runner = new JobRunner(failingCancelScheduler, null, CivMetrics.noop(), CivTracer.noop())) {
+            runner.start(List.of(new LocalJob("cancelable", () -> {
+            })));
+        }
+    }
+
+    @Test
     void localSchedulerSchedulesAndCloses() throws Exception {
         java.util.concurrent.CountDownLatch executed = new java.util.concurrent.CountDownLatch(1);
         try (LocalJobScheduler scheduler = new LocalJobScheduler("test-job")) {

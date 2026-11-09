@@ -166,6 +166,12 @@ class DispatcherRuntimeUnitsTest {
         acked.ack(1);
         acked.recordPush(entry(2, 2, 0, new byte[]{2}));
         assertEquals(2, acked.planReplay(0, 0).minBufferedPushId());
+
+        // a push recorded below the ack watermark is dropped by evict itself
+        PlayerSession stale = new PlayerSession(1, 10, 0);
+        stale.ack(5);
+        stale.recordPush(entry(3, 3, 0, new byte[]{3}));
+        assertEquals(0, stale.planReplay(0, 0).minBufferedPushId());
     }
 
     @Test

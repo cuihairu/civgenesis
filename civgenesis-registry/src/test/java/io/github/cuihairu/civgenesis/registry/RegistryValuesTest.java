@@ -39,6 +39,31 @@ class RegistryValuesTest {
     }
 
     @Test
+    void metadataHandlesEmptyEndpointListsAndBlankSegments() {
+        // null and empty endpoint lists encode to an empty string
+        assertEquals("", RegistryMetadata.encode(1, 2, null).get(RegistryMetadata.CG_ENDPOINTS));
+        assertEquals("", RegistryMetadata.encode(1, 2, List.of()).get(RegistryMetadata.CG_ENDPOINTS));
+        // blank segments inside a non-blank value are skipped while real ones decode
+        List<Endpoint> endpoints = RegistryMetadata.decodeEndpoints(
+                Map.of(RegistryMetadata.CG_ENDPOINTS, "tcp%3A%2F%2Fa%3A1,,tcp://b:2,"));
+        assertEquals(List.of(new Endpoint("tcp://a:1"), new Endpoint("tcp://b:2")), endpoints);
+    }
+
+    @Test
+    void serviceRegistryDefaultCloseIsNoop() throws Exception {
+        ServiceRegistry registry = new ServiceRegistry() {
+            @Override
+            public void register(ServiceRegistration registration) {
+            }
+
+            @Override
+            public void deregister(ServiceRegistration registration) {
+            }
+        };
+        registry.close();
+    }
+
+    @Test
     void endpointAndRecordsValidateValues() {
         assertThrows(NullPointerException.class, () -> new Endpoint(null));
         assertThrows(IllegalArgumentException.class, () -> new Endpoint(" "));

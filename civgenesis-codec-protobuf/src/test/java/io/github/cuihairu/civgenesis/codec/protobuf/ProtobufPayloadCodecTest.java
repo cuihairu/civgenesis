@@ -57,6 +57,86 @@ class ProtobufPayloadCodecTest {
         assertThrows(NullPointerException.class, () -> codec.encodeError(UnpooledByteBufAllocatorHolder.ALLOCATOR, null));
     }
 
+    @Test
+    void rejectsMessageLiteTypeWithoutDefaultInstance() throws Exception {
+        // the MessageLite interface itself passes the assignability check but has no
+        // static getDefaultInstance(), so parser resolution fails and reports the class
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () ->
+                codec.decode(SystemMsgIds.RESUME, com.google.protobuf.MessageLite.class,
+                        Unpooled.wrappedBuffer(new byte[] {1})));
+        org.junit.jupiter.api.Assertions.assertTrue(e.getMessage().contains("com.google.protobuf.MessageLite"));
+    }
+
+    @Test
+    void rejectsMessageLiteTypeWhoseDefaultInstanceIsNotAMessage() throws Exception {
+        // a MessageLite-assignable type whose getDefaultInstance() does not return a
+        // MessageLite also fails parser resolution
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () ->
+                codec.decode(SystemMsgIds.RESUME, FakeMessage.class, Unpooled.wrappedBuffer(new byte[] {1})));
+        org.junit.jupiter.api.Assertions.assertTrue(e.getMessage().contains("FakeMessage"));
+    }
+
+    private static final class FakeMessage implements com.google.protobuf.MessageLite {
+        public static Object getDefaultInstance() {
+            return new Object();
+        }
+
+        @Override
+        public void writeTo(com.google.protobuf.CodedOutputStream output) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public int getSerializedSize() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.google.protobuf.Parser<? extends com.google.protobuf.MessageLite> getParserForType() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.google.protobuf.ByteString toByteString() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public byte[] toByteArray() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void writeTo(java.io.OutputStream output) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void writeDelimitedTo(java.io.OutputStream output) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.google.protobuf.MessageLite.Builder newBuilderForType() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.google.protobuf.MessageLite.Builder toBuilder() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean isInitialized() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public com.google.protobuf.MessageLite getDefaultInstanceForType() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
     private static void assertTrueValue(boolean value) {
         org.junit.jupiter.api.Assertions.assertTrue(value);
     }

@@ -64,11 +64,25 @@ class DispatcherRuntimeEdgeTest {
 
             assertTrue(state.tryAddInFlight(1, 8, 0));
             assertTrue(state.tryAddInFlight(2, 8, 0));
-            ConnectionState.DeferredEntry deferred = new ConnectionState.DeferredEntry(5, 7, 1, 0, 0, CivSpan.noop());
+            // a span whose setError throws still gets closed through the finally branch
+            final boolean[] closed = {false};
+            CivSpan failingSpan = new CivSpan() {
+                @Override
+                public void setError(String message) {
+                    throw new IllegalStateException("span failed");
+                }
+
+                @Override
+                public void close() {
+                    closed[0] = true;
+                }
+            };
+            ConnectionState.DeferredEntry deferred = new ConnectionState.DeferredEntry(5, 7, 1, 0, 0, failingSpan);
             assertTrue(state.registerDeferred(deferred));
 
             runtime.onDisconnect(conn);
             assertEquals(0, state.inFlightCount());
+            assertTrue(closed[0]);
         }
     }
 

@@ -51,4 +51,30 @@ class RedisLeaseProviderTest {
         assertThrows(NullPointerException.class, () -> provider.tryAcquire(null, Duration.ZERO));
         assertThrows(NullPointerException.class, () -> provider.tryAcquire("name", null));
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void stringUriConstructorWorksAndUnlockFailureIsTolerated() {
+        RedisClient client = mock(RedisClient.class);
+        StatefulRedisConnection<String, String> connection = mock(StatefulRedisConnection.class);
+        RedisCommands<String, String> commands = mock(RedisCommands.class);
+        when(client.connect()).thenReturn(connection);
+        when(connection.sync()).thenReturn(commands);
+        when(commands.incr("civgenesis:lease:n:token")).thenReturn(9L);
+        when(commands.set(eq("civgenesis:lease:n:lock"), eq("9"), any())).thenReturn("OK");
+        // a failing unlock script must not propagate from lease close
+        when(commands.eval(anyString(), any(), any(String[].class), eq("9")))
+                .thenThrow(new IllegalStateException("redis down"));
+
+        try (org.mockito.MockedStatic<RedisClient> factory = org.mockito.Mockito.mockStatic(RedisClient.class)) {
+            factory.when(() -> RedisClient.create("redis://localhost:6379")).thenReturn(client);
+            RedisLeaseProvider provider = new RedisLeaseProvider("redis://localhost:6379");
+            Optional<io.github.cuihairu.civgenesis.jobs.Lease> lease = provider.tryAcquire("n", Duration.ZERO);
+            assertTrue(lease.isPresent());
+            assertEquals(9, lease.orElseThrow().fencingToken());
+            lease.orElseThrow().close();
+            lease.orElseThrow().close();
+            provider.close();
+        }
+    }
 }

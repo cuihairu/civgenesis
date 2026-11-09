@@ -67,6 +67,31 @@ class SystemControllersTest {
     }
 
     @Test
+    void clientHelloFallsBackToConfigLimitsTlsAndPlainCompression() throws Exception {
+        SystemServerConfig serverConfig = new SystemServerConfig(7, 1000, 3, 4, 5, "epoch", true);
+        assertEquals("epoch", SystemServerConfig.defaults("epoch").serverEpoch());
+        SystemClientHelloController controller = new SystemClientHelloController(serverConfig);
+        try (ShardExecutor shards = new ShardExecutor(1, "test")) {
+            DispatcherRuntime runtime = new DispatcherRuntime(routes(controller), new ProtobufPayloadCodec(), shards, config());
+            SystemTestConnection connection = new SystemTestConnection(1);
+            runtime.onConnect(connection);
+            // a non-positive frame limit and an empty compression list exercise the
+            // config fallback paths; a TLS-capable client selects TLS
+            Frame request = new Frame(FrameType.REQ, SystemMsgIds.CLIENT_HELLO, 1, 0, 0, 0, 0,
+                    codec().encode(connection.alloc(), ClientHelloReq.newBuilder()
+                            .setMaxFrameBytes(-1)
+                            .addSupportedCiphers(io.github.cuihairu.civgenesis.protocol.system.CipherAlgorithm.CIPHER_TLS)
+                            .build()).retain());
+            runtime.handle(connection, request);
+            await().atMost(Duration.ofSeconds(10)).until(() -> !connection.frames.isEmpty());
+            ClientHelloResp resp = ClientHelloResp.parseFrom(connection.frames.get(0).payload());
+            assertEquals(1000, resp.getMaxFrameBytes());
+            assertEquals(io.github.cuihairu.civgenesis.protocol.system.CipherAlgorithm.CIPHER_TLS, resp.getSelectedCipher());
+            assertEquals(io.github.cuihairu.civgenesis.protocol.system.CompressionAlgorithm.COMPRESSION_NONE, resp.getSelectedCompression());
+        }
+    }
+
+    @Test
     void resumeCoversUnauthorizedExpiredEpochSuccessAndReplay() throws Exception {
         SystemResumeController controller = new SystemResumeController(
                 new SystemServerConfig(1, 1000, 8, 8, 60_000, "epoch", false),
