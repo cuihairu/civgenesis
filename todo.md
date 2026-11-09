@@ -45,3 +45,17 @@
 
 - [x] Quickstart：提供一个最小 `examples/`（echo + resume/snapshot 演示），不包含任何玩法逻辑
 - [x] 文档：补充“如何接入你自己的 admin/网关/登录服务”的集成说明（只写接口与流程）
+
+## 覆盖率 98% 门槛（2026-11-09）
+
+- [x] 覆盖率巡检（2026-10-20 巡检单）：codecov 报 48.24% → 核实为**测量缺失**而非真实缺口：`examples/echo-server`（application 模块）从未被 jacoco 插桩，其类全部按 missed 计入。修复根 `build.gradle.kts` 插桩触发器（`java-library` → `java`）后，插桩面即覆盖全部 java 模块。
+- [x] 对真实缺口补测试（`db5c4e0` 插桩修复 + `f398452` aeron、`a75ee60` tcp/ws loopback、`f1acb02` tlv、`5890ec7` executors、`2a661de` nacos、`bb62c6b` grpc/selector、`54ee9ce` echo-server 与错误路径）。
+- [x] 复测：`./gradlew clean test jacocoRootReport` 全绿，根聚合 **LINE 99.07%**（covered 2450 / missed 23，共 2473），高于 98% 门槛（49 行内）。
+- [x] 剩余 23 行未覆盖均非关键路径，逐条记录（不凑数、不改生产行为）：
+  - `ipc/routing/EndpointSelector.java` 95/103/104（3 行）——防御分支，isLoopbackTcp 仅对 TCP 类端点调用，blank-host 分支已被 `tcp:///x:9` 用例经过
+  - `dispatcher/runtime/GzipPayloads.java` 24-26（3 行）——compress 中 GZIPOutputStream 抛 IOException 的兜底（标准 gzip close 不会抛，需重度 mock 才可达）
+  - `dispatcher/route/RouteScanner.java` 35（1 行）——非 public 方法防御检查，`getMethods()` 永远只返回 public，实际不可达
+  - `ipc/uds/UdsIpcConnection.java` 62/81/106-109/124（7 行）——队列满回滚、半包截断、写循环异常兜底等防御路径
+  - `ipc/uds/UdsIpcServer.java` 56/68/79/85（4 行）——accept 线程 lambda 的 jacoco 行表错位（实际字节码落在 52 行），仅运行期 IO 异常可触发
+  - `spring/observability/CivgenesisObservabilityAutoConfiguration.java` 87/90/99/102（4 行）——@ConditionalOnProperty 空标记类的隐式构造器，实例化测试纯属凑数
+  - `ipc/aeron/AeronIpcEndpoint.java` 27（1 行）——URI 有 scheme 时 ssp 不可能为 null，防御分支不可达
