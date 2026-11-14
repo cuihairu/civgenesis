@@ -74,6 +74,7 @@ flowchart LR
 ├── civgenesis-codec-tlv/            # TLV varint codec
 ├── civgenesis-protocol-system/      # system.proto (reserved msgId range)
 ├── civgenesis-codec-protobuf/       # protobuf payload codec + system Error
+├── civgenesis-system/               # system messages (ClientHello/Resume/Sync) + auth/snapshot SPI
 ├── civgenesis-dispatcher/           # @GameController/@GameRoute + route scan + dispatcher runtime
 ├── civgenesis-scheduler/            # hashed wheel scheduler (time wheel)
 ├── civgenesis-transport-netty-ws/   # Netty WebSocket transport
@@ -83,6 +84,7 @@ flowchart LR
 ├── civgenesis-rpc-grpc/             # gRPC helpers
 ├── civgenesis-jobs/                 # background jobs (local + leader-only lease SPI)
 ├── civgenesis-jobs-lease-redis/     # optional Redis LeaseProvider reference impl
+├── civgenesis-system/               # system messages (ClientHello/Resume/Sync) + auth/snapshot SPI
 ├── civgenesis-ipc/                  # IPC reference impl (UDS) + InstanceId helpers
 ├── civgenesis-ipc-aeron/            # IPC reference impl (Aeron IPC / SHM)
 ├── civgenesis-spring-boot-starter/  # auto-wiring (no MVC), properties, lifecycle

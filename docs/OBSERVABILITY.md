@@ -66,12 +66,16 @@ java \
   -jar app.jar
 ```
 
-该 span 会带以下 attributes（便于排查）：
+业务消息处理 span（`civgenesis.req`）会带以下 attributes（便于排查）：
 
 - `cg.msg_id` / `cg.seq`
 - `cg.connection_id`
 - `cg.player_id`
 - `cg.session_epoch`
+
+后台任务 span（`civgenesis.job`）会带：
+
+- `cg.job_name` / `cg.job_run_id`
 
 ## 3) 与协议/Dispatcher 的关系
 

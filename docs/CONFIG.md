@@ -81,7 +81,8 @@
 
 本仓库提供可选的 metrics 与 tracing（框架内置埋点，见 `docs/OBSERVABILITY.md`）。
 
-- `civgenesis.observability.prometheus.enabled=true`（启动独立 Netty HTTP `/metrics`）
+- `civgenesis.observability.metrics.enabled`（默认 false；仅开启内部 metrics 采集，不启动 `/metrics` HTTP 端点）
+- `civgenesis.observability.prometheus.enabled=true`（启动独立 Netty HTTP `/metrics`；开启后也会自动启用内部 metrics 采集）
 - `civgenesis.observability.prometheus.host=0.0.0.0`
 - `civgenesis.observability.prometheus.port=9090`
 - `civgenesis.observability.prometheus.path=/metrics`
