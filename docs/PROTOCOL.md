@@ -110,7 +110,8 @@
 
 - 每个 `PlayerSession` 维护单调递增的 `pushId`。
 - 所有 `PUSH` 都必须带 `pushId`。
-- **只有当 `flags` 包含 `ACK_REQUIRED` 时，该 `PUSH` 才要求 ACK**；否则视为 best-effort 推送（可丢失、不重放）。
+- **只有当 `flags` 包含 `ACK_REQUIRED` 时，该 `PUSH` 才要求 ACK**；未设置时视为 best-effort 推送（可丢失）。
+- 说明（当前版本）：`ACK_REQUIRED` 是**客户端行为**（见下文 3.2）；服务端推送缓存与 `Resume` 重放**不读取该 flag**，对缓存窗口内的 `PUSH` 一视同仁地重放（`DispatcherRuntime.java:380`、`PlayerSession.java:46-77`）。因此“best-effort”只表示客户端不回 ACK，不代表服务端不重放。
 
 #### pushId 的生命周期（最佳实践）
 

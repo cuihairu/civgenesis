@@ -157,7 +157,7 @@ CivGenesis 默认提供 Nacos 的注册/发现实现（见模块 `civgenesis-reg
 CivGenesis 面向“游戏消息”（客户端）已经定义了：
 
 - 背压：in-flight 限制与 shard 队列满回错误（见 `docs/SECURITY.md`）
-- 推送可靠性：`ACK_REQUIRED` 才启用可靠推送（见 `docs/PROTOCOL.md`）
+- 推送可靠性：服务端为所有 PUSH 维护重放缓存，`ACK_REQUIRED` 决定客户端是否回 ACK（见 `docs/PROTOCOL.md` §3.3）
 
 内部 IPC 建议复用同样的原则：
 

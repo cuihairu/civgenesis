@@ -174,6 +174,9 @@ in-flight 与背压（建议）：
 
 ## 4) 可靠推送（ACK_REQUIRED）
 
+> 已落地：`civgenesis.dispatcher.max-buffered-push-count`（默认 2000）、`civgenesis.dispatcher.max-buffered-push-age-millis`（默认 60000），见 §0 `CivgenesisDispatcherProperties`。
+> 下列 `civgenesis.push.reliable.*` / `civgenesis.push.ack.intervalMillis` 是**建议配置项，尚未落地**（源码无对应属性类；实现见 `PlayerSession.java` 的 N/T 双阈值，ACK 周期由客户端侧自行决定）。
+
 - `civgenesis.push.reliable.enabled=true`
 - `civgenesis.push.reliable.maxBufferedPushCount=2000`（N）
 - `civgenesis.push.reliable.maxBufferedPushAgeMillis=60000`（T）

@@ -16,7 +16,7 @@ features:
   - title: TLV 协议 + Req/Resp
     details: 自定义 msgId + 可扩展 TLV；支持超时重试、去重与背压
   - title: 可靠推送与续传
-    details: ACK_REQUIRED 才做可靠推送；断线小窗口续传/大窗口全量 Sync
+    details: 服务端为所有 PUSH 维护重放缓存；客户端按 ACK_REQUIRED 决定是否回 ACK；断线小窗口续传/大窗口全量 Sync
 ---
 
 ## 文档

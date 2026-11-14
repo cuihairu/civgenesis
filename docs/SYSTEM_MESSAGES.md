@@ -94,7 +94,7 @@
 - `uint64 minBufferedPushId`（可选，仅用于调试/观测）
 - `uint64 maxBufferedPushId`（可选，仅用于调试/观测）
 
-> 若 `result=OK`：服务端会重放缺失的“可靠推送”（PUSH + ACK_REQUIRED）。
+> 若 `result=OK`：服务端会重放缓存窗口内缺失的 `PUSH`（重放不筛选 `ACK_REQUIRED`，见 `docs/PROTOCOL.md` §3.3）。
 > 若 `result=NEED_FULL_SYNC`：客户端应触发 `Sync` 或等待服务端 `SyncSnapshot`。
 
 ## 5) msgId=4 Sync（REQ/RESP）

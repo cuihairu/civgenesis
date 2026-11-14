@@ -181,7 +181,7 @@ Dispatcher dispatcher = new DispatcherRuntime(routeTable, codec, shardExecutor, 
 
 - `reply(resp)`：发送 RESP（自动带回 `seq`）
 - `error(CivError)`：统一错误封装（`flags.ERROR` + `Error` payload；错误码/是否可重试封装在 `CivError` 内）
-- `push(msgId, message, flags)`：发送 PUSH（`flags` 置 `ACK_REQUIRED` 时进入可靠推送缓存）
+- `push(msgId, message, flags)`：发送 PUSH（**所有** PUSH 都进入推送缓存窗口，与 `flags.ACK_REQUIRED` 无关；`ACK_REQUIRED` 只影响客户端是否回 ACK，见 `docs/PROTOCOL.md` §3.3）
 
 ## 5) 分片执行（必须遵守）
 
