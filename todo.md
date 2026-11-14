@@ -41,6 +41,11 @@
 - [x] Registry：元信息协议完善（transportCaps/endpoints/instanceId）与灰度/权重字段预留
 - [x] IPC：Unix socket / shared-memory 的实现模块（含背压）
 
+## 语言与文档站（P2）
+
+- [ ] 浏览器语言自动识别跳转（等用户拍板范围；基线=手动切换+显式链接）——当前文档站为 VuePress 单 locale（`zh-CN`，`docs/.vuepress/config.ts:6`），无 `locales` 路由、无 `/zh/`，README 为英文单文件，两者之间无互链；自动识别属增强项，需先产出双语内容再谈跳转（见 `docs/审计-文档一致性.md` G2-2）
+- [ ] 是否把文档站迁到 root=EN + `/zh/` 的 locale 契约（与全舰队一致）——结构迁移，非缺页补齐，待拍板
+
 ## 文档与示例（不含业务逻辑）
 
 - [x] Quickstart：提供一个最小 `examples/`（echo + resume/snapshot 演示），不包含任何玩法逻辑

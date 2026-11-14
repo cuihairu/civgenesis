@@ -84,7 +84,6 @@ flowchart LR
 ├── civgenesis-rpc-grpc/             # gRPC helpers
 ├── civgenesis-jobs/                 # background jobs (local + leader-only lease SPI)
 ├── civgenesis-jobs-lease-redis/     # optional Redis LeaseProvider reference impl
-├── civgenesis-system/               # system messages (ClientHello/Resume/Sync) + auth/snapshot SPI
 ├── civgenesis-ipc/                  # IPC reference impl (UDS) + InstanceId helpers
 ├── civgenesis-ipc-aeron/            # IPC reference impl (Aeron IPC / SHM)
 ├── civgenesis-spring-boot-starter/  # auto-wiring (no MVC), properties, lifecycle
