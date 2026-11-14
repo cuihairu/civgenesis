@@ -30,7 +30,7 @@ CivGenesis 提供最小的 gRPC channel 工具（不绑定具体业务服务）�
 - 模块：`civgenesis-rpc-grpc`
 - `GrpcChannels.forUri("grpc://10.0.0.12:50051", GrpcClientConfig.insecure())`
 
-> 生产环境可以使用 TLS；内部集群也常见 plaintext + 传输层隔离（取决于你的安全基线）。
+> 生产环境可以使用 TLS：`GrpcClientConfig.tls()`（`GrpcClientConfig.java:12-14`，对应 `plaintext=false`）；内部集群也常见 plaintext + 传输层隔离（取决于你的安全基线）。
 
 ## 4) Node.js 侧（建议）
 

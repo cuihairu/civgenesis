@@ -13,14 +13,14 @@
 
 ## API 建议
 
-- `schedule(shardKey, delay, task)`
-- `scheduleAt(shardKey, deadlineMonoNanos, task)`（推荐：用单调时钟）
-- `cancel(handle)`
+- `schedule(shardKey, delay, task)` — 已实现（`ShardScheduler.java:6`，`Delay` 为 `java.time.Duration`，内部经 `HashedWheelTimer` 到期触发）
+- `cancel(handle)` — 已实现：`schedule(...)` 返回 `ScheduledTask`，其 `cancel()` 即取消（`ScheduledTask.java:3`）
+- `scheduleAt(shardKey, deadlineMonoNanos, task)` — 建议接口，**尚未实现**：当前仅 `schedule(shardKey, Duration, task)` 一个重载（`ShardScheduler.java:6`）
 
 其中 `shardKey` 默认：
 
 - 已登录：`playerId`
-- 未登录：`channelId`
+- 未登录：`connectionId`（运行时实际字段名，`RequestContext.java:46`；框架内无 `channelId` 概念）
 
 ## Tick（房间/战斗/行军）最佳实践
 

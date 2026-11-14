@@ -22,7 +22,7 @@ const client = new CivGenesisClient({
   }
 })
 
-await client.connect('ws://127.0.0.1:8080/ws')
+await client.connect('ws://127.0.0.1:8888/ws')
 
 // Req/Resp
 const resp = await client.request(1000, new Uint8Array([1, 2, 3]), { timeoutMs: 1000, retries: 1 })

@@ -30,8 +30,13 @@
 ### 0.1.1 TCP（可选）
 
 - `civgenesis.tcp.enabled`（默认 false）
+- `civgenesis.tcp.boss-threads`（默认 1）
+- `civgenesis.tcp.worker-threads`（默认 0）
 - `civgenesis.tcp.host`（默认 `0.0.0.0`）
 - `civgenesis.tcp.port`（默认 9999）
+- `civgenesis.tcp.so-backlog`（默认 1024）
+- `civgenesis.tcp.recv-buf-bytes` / `civgenesis.tcp.send-buf-bytes`（默认 0）
+- `civgenesis.tcp.pooled-allocator`（默认 true）
 - `civgenesis.tcp.max-frame-bytes`（默认 1MiB）
 - `civgenesis.tcp.idle-timeout-seconds`（默认 30）
 
@@ -67,9 +72,20 @@
 - `civgenesis.jobs.enabled`（默认 false）
 - `civgenesis.jobs.thread-name`（默认 `civgenesis-job-`）
 
+### 0.6 Registry / Nacos
+
+- `civgenesis.registry.nacos.enabled`（默认 true）
+- `civgenesis.registry.nacos.server-addr`（默认 `127.0.0.1:8848`）
+- `civgenesis.registry.nacos.namespace`（默认空）
+- `civgenesis.registry.nacos.username`（默认空）
+- `civgenesis.registry.nacos.password`（默认空）
+- `civgenesis.registry.nacos.group`（默认 `DEFAULT_GROUP`）
+
+键位与默认值详见 `docs/REGISTRY_NACOS.md` §5（`CivgenesisNacosProperties.java:5-12`）。
+
 ## 1) 传输（WebSocket）
 
-- `civgenesis.transport=ws`（默认）
+- `civgenesis.transport=ws`（建议键，**尚未落地**：源码无此前缀，见 `CivgenesisTcpProperties.java:5`/`CivgenesisWsProperties.java:5`——实际通过 `civgenesis.ws.enabled` / `civgenesis.tcp.enabled` 分别开关两种传输）
 - `civgenesis.ws.port=8888`
 - `civgenesis.ws.path=/`
 - `civgenesis.ws.maxFrameBytes=1048576`（1MiB，按协议与包体大小调整）
@@ -82,11 +98,11 @@
 本仓库提供可选的 metrics 与 tracing（框架内置埋点，见 `docs/OBSERVABILITY.md`）。
 
 - `civgenesis.observability.metrics.enabled`（默认 false；仅开启内部 metrics 采集，不启动 `/metrics` HTTP 端点）
-- `civgenesis.observability.prometheus.enabled=true`（启动独立 Netty HTTP `/metrics`；开启后也会自动启用内部 metrics 采集）
+- `civgenesis.observability.prometheus.enabled`（默认 false；true 时启动独立 Netty HTTP `/metrics`，并自动启用内部 metrics 采集，`CivgenesisObservabilityProperties.java:48`）
 - `civgenesis.observability.prometheus.host=0.0.0.0`
 - `civgenesis.observability.prometheus.port=9090`
 - `civgenesis.observability.prometheus.path=/metrics`
-- `civgenesis.observability.tracing.enabled=true`（开启 OpenTelemetry span）
+- `civgenesis.observability.tracing.enabled`（默认 false；true 开启 OpenTelemetry span，`CivgenesisObservabilityProperties.java:87`）
 - `civgenesis.observability.tracing.instrumentation-name=civgenesis`
 
 ## 1.2) Jobs（后台任务）
@@ -98,28 +114,36 @@
 
 TLS（最佳实践）：
 
+> 下列 `civgenesis.ws.tls.*` 为建议配置项，**尚未落地**（`CivgenesisWsProperties.java:7-19` 共 13 个字段，无 `tls` 嵌套类；全仓 grep `civgenesis.ws.tls` 0 命中）。生产 wss 建议在网关/Ingress 侧终止 TLS，SDK 传输层当前不内置 TLS 开关。
+
 - `civgenesis.ws.tls.enabled=true`（生产建议 true，对应 wss://）
 - `civgenesis.ws.tls.require=true`（生产建议 true：拒绝明文 ws://）
   - 说明：如果部署在网关/Ingress 已终止 TLS，SDK 侧可配置为 `tls.enabled=false`，但仍建议保证链路加密。
 
 ## 2) Dispatcher/线程模型（按 playerId 分片）
 
-- `civgenesis.dispatch.shards=0`（0 表示自动：`cpuCores * 2`，并做上下限）
-- `civgenesis.dispatch.queuePerShard=65536`（每分片队列容量，满了要触发背压/断连策略）
+已落地键见 §0.2（前缀 `civgenesis.dispatcher`，默认 `shards=64`）。以下 `civgenesis.dispatch.*` 为早期草案写法，**该前缀尚未落地**：
 
-Raw handler（ByteBuf）策略（建议）：
+- `civgenesis.dispatch.shards=0`（草案，未落地：真实键为 `civgenesis.dispatcher.shards`（默认 64）；且无「0=自动」档——`ShardExecutor.java:14-17` 对 `shards<=0` 直接抛 `IllegalArgumentException`）
+- `civgenesis.dispatch.queuePerShard=65536`（草案，未落地：每分片队列容量当前不可配）
 
-- `civgenesis.dispatch.rawPayloadMode=RETAIN`（默认：零拷贝，SDK 自动 release）
+Raw handler（ByteBuf）策略：
+
+- 已落地：`civgenesis.dispatcher.raw-payload-mode=RETAIN`（默认：零拷贝，SDK 自动 release）
   - 可选：`COPY`（更安全，投递前复制到 heap，减少引用计数误用风险）
 
 ## 2.1) 会话并发策略
 
-- `civgenesis.session.singleSessionPerPlayer=true`（默认：同 playerId 只允许一个活跃连接）
-- `civgenesis.session.onDuplicateLogin=KICK_OLD`（默认；可选：`REJECT_NEW`）
+> 下列 `civgenesis.session.*` 为建议配置项，**尚未落地**（源码无该前缀；全仓 grep `civgenesis.session` 0 命中）。当前行为固定为「同 playerId 踢旧连接」，由 `AuthResult.kickExistingSession` 决定（默认 true，`AuthResult.java:7-9`），无配置开关。
+
+- `civgenesis.session.singleSessionPerPlayer=true`（建议：同 playerId 只允许一个活跃连接）
+- `civgenesis.session.onDuplicateLogin=KICK_OLD`（建议；可选：`REJECT_NEW`）
 
 ## 2.3) 阻塞任务（Java 21 虚拟线程）
 
 建议所有 DB/HTTP/gRPC 等阻塞操作都不要占用分片线程；使用虚拟线程执行并在完成后回投到分片线程。
+
+> 下列 `civgenesis.blocking.*` 为建议配置项，**尚未落地**（源码无该前缀）。`BlockingExecutor` 已在 `civgenesis-core` 提供（`BlockingExecutor.java`），但尚未接线到 `RequestContext`（见 `docs/DISPATCHER.md`「当前未接线」）；阻塞任务请自行提交虚拟线程并回投分片线程。
 
 - `civgenesis.blocking.enabled=true`
 - `civgenesis.blocking.mode=VIRTUAL`（默认；可选：`PLATFORM_POOL`）
@@ -128,6 +152,8 @@ Raw handler（ByteBuf）策略（建议）：
 ## 2.2) 实例标识（instanceId）
 
 用于服务发现、选路与“同机判定”（见 `docs/IPC.md`）：
+
+> 下列 `civgenesis.instance.*` 为建议配置项，**尚未落地**（源码无该前缀）。当前 instanceId 由 IPC 模块按位布局生成（`InstanceId.java`），不是 Spring 配置项。
 
 - `civgenesis.instance.id=0`（uint64，建议运维/部署时注入）
 - `civgenesis.instance.idText=`（可选：人类可读形式，例如 `r1-h12-t2-i3`）
@@ -162,6 +188,10 @@ Raw handler（ByteBuf）策略（建议）：
 
 ## 3) Req/Resp 去重与超时
 
+> 下列 `civgenesis.reqresp.*` 为早期草案写法，**该前缀尚未落地**；真实键见 §0.2 `civgenesis.dispatcher.*`：
+> `dedup-enabled`（默认 true）、`dedup-max-entries`（默认 1024）、`dedup-ttl-millis`（默认 30000）、`max-in-flight-per-connection`（默认 64）、`request-timeout-millis`（默认 **5000**，见 `CivgenesisDispatcherProperties.java:14,17-18`）。
+> `civgenesis.dispatch.backpressure.onShardQueueFull` 亦无对应属性（未落地）。
+
 - `civgenesis.reqresp.dedup.enabled=true`
 - `civgenesis.reqresp.dedup.maxEntries=1024`（每玩家缓存最近 N 个 seq 的响应）
 - `civgenesis.reqresp.dedup.ttlMillis=30000`（与客户端重试窗口相匹配）
@@ -169,8 +199,8 @@ Raw handler（ByteBuf）策略（建议）：
 in-flight 与背压（建议）：
 
 - `civgenesis.reqresp.maxInFlightPerConnection=64`（超过则返回 BACKPRESSURE 错误；in-flight 包含 deferred）
-- `civgenesis.reqresp.requestTimeoutMillis=10000`（服务端侧“未完成响应”超时；超时后返回错误并进入去重缓存）
-- `civgenesis.dispatch.backpressure.onShardQueueFull=ERROR`（默认：回错误；可选：`CLOSE`）
+- `civgenesis.reqresp.requestTimeoutMillis=10000`（草案值；真实键 `request-timeout-millis` 默认 5000）
+- `civgenesis.dispatch.backpressure.onShardQueueFull=ERROR`（草案，未落地：回错误；可选：`CLOSE`）
 
 ## 4) 可靠推送（ACK_REQUIRED）
 
