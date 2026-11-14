@@ -11,7 +11,7 @@
 ## 1) 路由注解（建议）
 
 - `@GameController`：标记一个“路由容器”（通常是 Spring bean，便于 DI）
-- `@GameRoute(id=..., open=..., shardBy=..., codec=...)`：标记一个处理方法
+- `@GameRoute(id=..., open=..., shardBy=...)`：标记一个处理方法（当前版本仅这三个属性；codec 选择由 `PayloadCodec` Bean 决定，注解上无该属性）
 
 推荐约束：
 
@@ -47,7 +47,7 @@ SDK 在 IO 线程完成解码后，把“请求对象”投递到分片线程执
     - 同步完成：直接 `ctx.reply/ctx.error`
     - 异步完成：先 `DeferredReply d = ctx.defer()`，在异步回调回投分片线程后通过 `d.reply/d.error` 完成
 - 框架应提供“请求未响应”检测：
-  - 若未 `defer` 且 handler 返回后仍未响应：自动回 `Error(code=TIMEOUT|NO_RESPONSE)` 并记录告警（防业务漏回包）
+  - 若未 `defer` 且 handler 返回后仍未响应：自动回 `Error(code=SERVER_BUSY, message="no response", retryable=true)`（当前实现无告警日志，防业务漏回包需自行在 handler 层兜底）
 
 ### 2.3 DeferredReply（异步响应句柄，最佳实践）
 
@@ -61,21 +61,21 @@ SDK 在 IO 线程完成解码后，把“请求对象”投递到分片线程执
 
 - `DeferredReply reply = ctx.defer()`
 - `reply.reply(resp)`：完成响应（只能成功一次）
-- `reply.error(code, message, retryable)`：完成错误响应（只能成功一次）
+- `reply.error(CivError)`：完成错误响应（只能成功一次；错误码/是否可重试封装在 `CivError` 内）
 - `reply.cancel()`：取消（由框架在断线/切号时触发；业务可选调用）
 
 语义建议：
 
-- `DeferredReply` 内部捕获不可变上下文：`channelId/playerId/sessionEpoch/msgId/seq`
+- `DeferredReply` 内部捕获不可变上下文：`connectionId/playerId/sessionEpoch/msgId/seq`
 - 完成时必须校验：
   - channel 仍然活跃
   - `sessionEpoch` 仍匹配（防切号串号）
 - `reply/reply.error` 只允许一次（内部 CAS/原子状态机）
 - 若已 cancel 或校验不通过：完成操作变为 no-op，并记录 debug/metrics（避免业务回调抛异常）
 
-框架建议提供语法糖：
+框架建议提供语法糖（草案，当前未实现）：
 
-- `ctx.blocking(callable).thenReply(mapper)`：阻塞任务在虚拟线程/阻塞池执行，完成后自动回投同一分片线程并完成 `DeferredReply`
+- `ctx.blocking(callable).thenReply(mapper)`：阻塞任务在虚拟线程/阻塞池执行，完成后自动回投同一分片线程并完成 `DeferredReply`。**当前未接线**：`BlockingExecutor` 已在 `civgenesis-core` 提供（见 `todo.md` P1），但 `RequestContext` 尚未暴露 `blocking(...)`，业务侧暂时自行提交到虚拟线程并回投分片线程
 
 ### 2.2 原始 bytes（高级用法）
 
@@ -165,22 +165,23 @@ Dispatcher dispatcher = new DispatcherRuntime(routeTable, codec, shardExecutor, 
 
 ## 4) RequestContext（运行期上下文）
 
-建议 `RequestContext` 至少包含：
+`RequestContext` 当前提供的字段读取（`civgenesis-dispatcher/.../runtime/RequestContext.java:46-190`）：
 
-- `long channelId`（连接 id）
-- `long playerId`（未登录为 0）
-- `long sessionEpoch`（用于“切号护栏”，见 `docs/PROTOCOL.md`）
-- `int msgId`
-- `int seq`（REQ/RESP）
-- `long pushId`（仅 PUSH/ACK）
-- `InetSocketAddress remoteAddress`
-- `Map<String,Object> attrs`（轻量扩展）
+- `long connectionId()`（连接 id）
+- `long playerId()`（未登录为 0）
+- `long sessionEpoch()`（用于“切号护栏”，见 `docs/PROTOCOL.md`）
+- `int msgId()`
+- `long seq()`（REQ/RESP）
+- `long push(int msgId, Object message, long flags)`：返回本次推送的 pushId
+- `ByteBuf rawPayload(Frame req)`（raw handler 用）
+
+草案中的扩展位（当前未实现）：`remoteAddress`/`attrs` 等扩展字段尚未提供，需要时走 `Frame` 自行取用。
 
 输出能力：
 
 - `reply(resp)`：发送 RESP（自动带回 `seq`）
-- `push(msgId, payload, reliable)`：发送 PUSH（`reliable=true` 时设置 `ACK_REQUIRED` 并缓存）
-- `error(code, message, retryable)`：统一错误封装（`flags.ERROR` + `Error` payload）
+- `error(CivError)`：统一错误封装（`flags.ERROR` + `Error` payload；错误码/是否可重试封装在 `CivError` 内）
+- `push(msgId, message, flags)`：发送 PUSH（`flags` 置 `ACK_REQUIRED` 时进入可靠推送缓存）
 
 ## 5) 分片执行（必须遵守）
 
@@ -189,10 +190,11 @@ Dispatcher dispatcher = new DispatcherRuntime(routeTable, codec, shardExecutor, 
 - 所有业务 handler 必须在 `ShardExecutor` 的分片线程内执行
 - 业务代码不得阻塞分片线程（DB/HTTP/文件 IO 必须走 blocking 执行器）
 
-推荐接口：
+推荐接口（草案，当前未实现）：
 
 - `ctx.blocking(callable)`：在虚拟线程或专用阻塞池执行，完成后自动回投同一分片线程
 - 回投前必须校验 `sessionEpoch`（防切号串号）
+- **当前未接线**：`BlockingExecutor` 已在 `civgenesis-core` 落地，但 `RequestContext` 尚未暴露 `blocking(...)`；阻塞任务请自行提交到虚拟线程（或业务侧自建阻塞池），完成后手动回投分片线程
 
 ## 6) 拦截器（可选，但建议预留）
 
@@ -218,7 +220,7 @@ Dispatcher dispatcher = new DispatcherRuntime(routeTable, codec, shardExecutor, 
 超时策略（可配置）：
 
 - 若请求在 `requestTimeoutMillis` 内仍未完成响应：
-  - 返回 `Error(code=SERVER_BUSY|TIMEOUT, retryable=true)`
+  - 返回 `Error(code=REQUEST_TIMEOUT=1008, retryable=true)`
   - 将该响应写入 `seq -> resp` 去重缓存（后续相同 seq 的重试直接重放该超时响应）
 
 切号/断线策略（最佳实践，定稿）：

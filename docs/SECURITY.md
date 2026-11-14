@@ -30,7 +30,7 @@
 Req/Resp 重试的最佳实践：
 
 - 客户端重试必须复用同一个 `seq`
-- 服务端对每个 `PlayerSession` 启用 `seq -> response` 去重缓存（LRU/TTL）
+- 服务端对每条连接启用 `seq -> response` 去重缓存（LRU/TTL；缓存随连接建立，重连后重建）
 
 对“高价值/有副作用”的业务请求（扣资源/发奖/交易）：
 

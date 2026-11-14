@@ -193,6 +193,8 @@ in-flight 与背压（建议）：
 - `civgenesis.system.loginMessageEnabled=false`（默认：关闭 `msgId=2 Login`）
 - `civgenesis.system.resumeMessageEnabled=true`（默认：开启 `msgId=3 Resume`）
 
+> 说明：当前版本仅实现 `civgenesis.system.enabled` 与 `civgenesis.system.gzip-enabled`；上述两个开关是建议配置项，尚未落地。`msgId=2 Login` 在本仓库未注册任何 handler（也没有开启它的配置），系统入口实际只有 `ClientHello` / `Resume` / `Sync`。
+
 ## 6) 压缩（COMPRESS）
 
 建议支持（按服务端允许列表与偏好顺序协商）：

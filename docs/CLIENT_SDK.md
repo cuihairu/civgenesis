@@ -22,6 +22,7 @@
 - Req/Resp：`seq>0`，超时重试必须复用同一 `seq`
 - 可靠推送：仅当 `flags.ACK_REQUIRED` 时才需要 ACK，并用 `pushId` 去重
 - 断线重连：优先走 `Resume(lastAppliedPushId)`，窗口不满足则全量 SyncSnapshot
+  - 注意：本仓库的参考实现只提供传输/编解码/重连策略，**不会自动发送 `ClientHello` / `Resume` / `Sync` 帧**，系统消息需业务侧自行构造
 
 ## 3) 参考代码位置
 

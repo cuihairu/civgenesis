@@ -63,7 +63,7 @@
 
 ## 3) msgId=2 Login（REQ/RESP）
 
-> 说明：该消息建议默认关闭（见 `docs/CONFIG.md`），外置登录服务架构下推荐统一使用 `Resume`。
+> 说明：该消息建议默认关闭（见 `docs/CONFIG.md`），外置登录服务架构下推荐统一使用 `Resume`。当前版本未注册 `msgId=2 Login` 的 handler，`CivgenesisSystemProperties` 也没有对应开关，系统入口只有 `ClientHello` / `Resume` / `Sync`。
 
 ### LoginReq
 
@@ -132,6 +132,7 @@
 - `1005 BACKPRESSURE`（连接 in-flight 超限、或目标分片队列满）
 - `1006 SERVER_BUSY`（更通用的繁忙）
 - `1007 SESSION_EXPIRED`（epoch 不匹配/切号导致）
+- `1008 REQUEST_TIMEOUT`（请求超过 `requestTimeoutMillis` 未完成响应，`retryable=true`）
 
 ## 8) 服务端落地位置（已实现）
 

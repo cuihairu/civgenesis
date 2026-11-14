@@ -24,7 +24,8 @@
 
 - 未识别的 `T` 必须被跳过（按 `L` 跳过 `V`）
 - 同一个 `T` 若出现多次：默认“最后一个覆盖前一个”（用于兼容/扩展）；服务端可选择直接拒绝
-- 必须限制：最大 Frame 字节数、最大 TLV 个数、单个 `L` 最大值（防 DoS）
+- 必须限制：最大 Frame 字节数、单个 `L` 最大值（防 DoS；当前版本已实现）
+- 尚未实现：单个 frame 内的 TLV 个数上限（codec 目前逐字段解析直到帧尾，不计数）
 
 > 数值字段的 value 也使用 `uvarint` 编码存入 `V`（即：`V` 本身再是一个 varint 的 bytes），以便统一跳过逻辑；bytes 字段则直接存原始 bytes。
 
@@ -95,7 +96,7 @@
 
 ### 2.2 服务端去重（建议强制）
 
-对每个 `PlayerSession` 维护一个小型缓存 `seq -> respFrame`（LRU/TTL）：
+对每条连接维护一个小型缓存 `seq -> respFrame`（LRU/TTL；缓存挂在连接上，重连后重建）：
 
 - 收到 `REQ`：
   - 若 `seq` 已存在：直接重放缓存的 `RESP`
@@ -143,7 +144,7 @@
 
 ### 3.3 服务端重放缓存
 
-服务端仅对“可靠推送”维护推送缓存（ring buffer），并采用**双阈值组合**限制内存：
+服务端对**所有** `PUSH` 维护推送缓存（ring buffer，与 `flags.ACK_REQUIRED` 无关），并采用**双阈值组合**限制内存：
 
 - `maxBufferedPushCount`：最多缓存 N 条可靠推送
 - `maxBufferedPushAge`：最多缓存最近 T 时间窗口内的可靠推送
@@ -287,10 +288,12 @@
 - 若客户端 `requireEncrypt=true` 且最终选到 `NONE`：返回错误并可选断开连接
 - 若客户端 `requireAckPush=true`：服务端应在 `serverLimits` 中明确打开“可靠推送”，并在需要可靠性的 `PUSH` 上设置 `flags.ACK_REQUIRED`
 
-服务端建议默认偏好（可配置）：
+服务端建议默认偏好：
 
 - 压缩：`ZSTD`（性能/压缩比综合较好）-> `LZ4`（极低延迟）-> `GZIP`（兼容）-> `NONE`
 - 加密：优先 `TLS`（`wss://`）；若必须应用层加密，则 `CHACHA20_POLY1305`（移动端友好）-> `AES_256_GCM` -> `NONE`
+
+> 当前版本说明：压缩协商只实现 `GZIP` / `NONE`（由 `civgenesis.system.gzip-enabled` 布尔开关开启，无偏好顺序配置）；`ZSTD` / `LZ4` 仅存在于 proto 枚举中，未实现。加密应用层算法（`CHACHA20_POLY1305` / `AES_256_GCM`）同样未实现，生产请使用 `wss://` TLS。
 
 ### 7.4 ClientHello 是否强制？
 
